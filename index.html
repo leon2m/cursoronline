@@ -13,7 +13,16 @@
     
     <!-- Error Handling for Sandboxed Environments -->
     <script>
-      // Suppress 'Access to storage is not allowed' errors common in sandboxed deployments (e.g. Monaco Editor internals)
+      // 1. Suppress Tailwind CDN Warning
+      const originalWarn = console.warn;
+      console.warn = function(...args) {
+        if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com should not be used in production')) {
+          return;
+        }
+        originalWarn.apply(console, args);
+      };
+
+      // 2. Suppress 'Access to storage is not allowed' errors (Synchronous)
       window.addEventListener('error', function(e) {
         if (e.message && (
             e.message.includes('Access to storage') || 
@@ -21,8 +30,19 @@
             e.message.includes('security check')
            )) {
           e.preventDefault();
-          console.warn('Suppressing benign storage access error in sandbox environment.');
           return true;
+        }
+      });
+
+      // 3. Suppress 'Access to storage is not allowed' errors (Asynchronous/Promises)
+      window.addEventListener('unhandledrejection', function(event) {
+        const msg = event.reason?.message || (typeof event.reason === 'string' ? event.reason : '');
+        if (msg && (
+            msg.includes('Access to storage') || 
+            msg.includes('QuotaExceeded') ||
+            msg.includes('security check')
+           )) {
+          event.preventDefault(); // Prevents the 'Uncaught (in promise)' error in console
         }
       });
       
