@@ -61,40 +61,42 @@
 
         // 3. ADVANCED INDEXEDDB MOCK
         // Monaco Editor relies heavily on IDB Promises. We must fake the async success events.
+        var mockIDBInstance;
         function createIDBMock() {
-          return {
+          if (mockIDBInstance) return mockIDBInstance;
+          mockIDBInstance = {
             open: function(name, version) {
               var request = {
                 result: {
                   objectStoreNames: { contains: function() { return false; } },
                   createObjectStore: function() { return { createIndex: function() {}, put: function() {}, delete: function() {} }; },
-                  transaction: function() { 
-                    return { 
-                      objectStore: function() { 
-                        return { 
-                          get: function() { 
-                             var req = {}; 
+                  transaction: function() {
+                    return {
+                      objectStore: function() {
+                        return {
+                          get: function() {
+                             var req = {};
                              setTimeout(function() { if(req.onsuccess) req.onsuccess({target: {result: null}}); }, 0);
-                             return req; 
-                          }, 
-                          put: function() { 
-                             var req = {}; 
+                             return req;
+                          },
+                          put: function() {
+                             var req = {};
                              setTimeout(function() { if(req.onsuccess) req.onsuccess({target: {result: null}}); }, 0);
                              return req;
                           },
                           delete: function() {
-                             var req = {}; 
+                             var req = {};
                              setTimeout(function() { if(req.onsuccess) req.onsuccess({target: {result: null}}); }, 0);
                              return req;
                           },
                           getAll: function() {
-                             var req = {}; 
+                             var req = {};
                              setTimeout(function() { if(req.onsuccess) req.onsuccess({target: {result: []}}); }, 0);
                              return req;
                           }
-                        }; 
-                      } 
-                    }; 
+                        };
+                      }
+                    };
                   },
                   close: function() {}
                 },
@@ -124,6 +126,14 @@
             },
             cmp: function(a, b) { return 0; }
           };
+          return mockIDBInstance;
+        }
+
+        function setMockIndexedDB() {
+          Object.defineProperty(window, 'indexedDB', {
+            get: function() { return createIDBMock(); },
+            configurable: true
+          });
         }
 
         // 4. APPLY PATCHES (Forcefully if needed)
@@ -148,17 +158,72 @@
 
         patchApi('localStorage', createStorageMock);
         patchApi('sessionStorage', createStorageMock);
-        
+
         // IndexedDB is trickier, often throws on property access, not just usage
         try {
            // If accessing window.indexedDB throws, or if open throws
            var db = window.indexedDB;
            if (!db) throw new Error("No IDB");
         } catch(e) {
-           Object.defineProperty(window, 'indexedDB', {
-             get: function() { return createIDBMock(); },
-             configurable: true
-           });
+           setMockIndexedDB();
+        }
+
+        // Guard against browsers that expose indexedDB but block storage (e.g. sandboxed iframes)
+        if (window.indexedDB) {
+          try {
+            var nativeOpen = window.indexedDB.open.bind(window.indexedDB);
+            var nativeDelete = window.indexedDB.deleteDatabase ? window.indexedDB.deleteDatabase.bind(window.indexedDB) : null;
+
+            function safeIDB() { return createIDBMock(); }
+
+            // Proactively detect storage denial before any library call sees it
+            try {
+              var probe = nativeOpen('__idb_probe__', 1);
+              var probeFailed = function(evt) {
+                if (evt && typeof evt.preventDefault === 'function') evt.preventDefault();
+                setMockIndexedDB();
+              };
+              if (probe && typeof probe.addEventListener === 'function') {
+                probe.addEventListener('error', probeFailed, true);
+                probe.addEventListener('blocked', probeFailed, true);
+              }
+              if (probe && typeof probe.onsuccess === 'undefined') {
+                // nothing to do
+              } else if (probe) {
+                var originalSuccess = probe.onsuccess;
+                probe.onsuccess = function(ev) {
+                  try { probe.result && probe.result.close(); nativeDelete && nativeDelete('__idb_probe__'); } catch (_) {}
+                  if (originalSuccess) originalSuccess.call(probe, ev);
+                };
+              }
+            } catch (probeErr) {
+              setMockIndexedDB();
+            }
+
+            if (typeof window.indexedDB.open === 'function') {
+              window.indexedDB.open = function(name, version) {
+                try {
+                  return nativeOpen(name, version);
+                } catch (err) {
+                  console.warn('IndexedDB blocked, falling back to in-memory mock');
+                  return safeIDB().open(name, version);
+                }
+              };
+            }
+
+            if (nativeDelete) {
+              window.indexedDB.deleteDatabase = function(name) {
+                try {
+                  return nativeDelete(name);
+                } catch (err) {
+                  return safeIDB().deleteDatabase(name);
+                }
+              };
+            }
+          } catch (err) {
+            // If even wrapping fails, swap in the mock entirely
+            setMockIndexedDB();
+          }
         }
 
         // Suppress Tailwind CDN Warning
