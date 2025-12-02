@@ -5,20 +5,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cursor Online Free</title>
     
-    <!-- Dynamic Favicon to prevent 404 errors -->
+    <!-- Dynamic Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%232EA446%22/><path d=%22M35 30 L65 50 L35 70%22 fill=%22none%22 stroke=%22white%22 stroke-width=%228%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>" />
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- CRITICAL: Error Handling & Storage Polyfill for Sandboxed Environments (Netlify/Editors) -->
+    <!-- CRITICAL: Advanced Storage Polyfill & Error Suppression -->
     <script>
       (function() {
-        // --- 1. Robust Storage Polyfill (LocalStorage, SessionStorage, IndexedDB) ---
-        // Sandboxed environments (like Netlify Preview or specific iframes) block access to storage APIs.
-        // We preemptively replace them with in-memory mocks to prevent "Access to storage is not allowed" crashes.
+        // 1. IMMEDIATE ERROR TRAP (Must be first)
+        // Catches "Uncaught (in promise)" errors caused by storage blocking
+        var IGNORED_MSGS = [
+          'Access to storage',
+          'QuotaExceeded',
+          'SecurityError',
+          'cdn.tailwindcss.com',
+          'load resource'
+        ];
 
-        function getStorageMock() {
+        function shouldIgnore(msg) {
+          if (!msg) return false;
+          var str = String(msg);
+          return IGNORED_MSGS.some(function(err) { return str.indexOf(err) > -1; });
+        }
+
+        window.addEventListener('error', function(e) {
+          if (shouldIgnore(e.message)) {
+            e.preventDefault(); 
+            e.stopImmediatePropagation();
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', function(e) {
+          var msg = e.reason ? (e.reason.message || String(e.reason)) : '';
+          if (shouldIgnore(msg)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+        }, true);
+
+        // 2. IN-MEMORY STORAGE POLYFILLS
+        // Replaces LocalStorage/SessionStorage with RAM objects
+        function createStorageMock() {
           var store = {};
           return {
             getItem: function(key) { return store[key] || null; },
@@ -30,101 +59,115 @@
           };
         }
 
-        function getIndexedDBMock() {
+        // 3. ADVANCED INDEXEDDB MOCK
+        // Monaco Editor relies heavily on IDB Promises. We must fake the async success events.
+        function createIDBMock() {
           return {
-            open: function() {
-              return {
+            open: function(name, version) {
+              var request = {
                 result: {
                   objectStoreNames: { contains: function() { return false; } },
-                  createObjectStore: function() { return {}; },
-                  transaction: function() { return { objectStore: function() { return { get: function() {}, put: function() {} }; } }; }
+                  createObjectStore: function() { return { createIndex: function() {}, put: function() {}, delete: function() {} }; },
+                  transaction: function() { 
+                    return { 
+                      objectStore: function() { 
+                        return { 
+                          get: function() { 
+                             var req = {}; 
+                             setTimeout(function() { if(req.onsuccess) req.onsuccess({target: {result: null}}); }, 0);
+                             return req; 
+                          }, 
+                          put: function() { 
+                             var req = {}; 
+                             setTimeout(function() { if(req.onsuccess) req.onsuccess({target: {result: null}}); }, 0);
+                             return req;
+                          },
+                          delete: function() {
+                             var req = {}; 
+                             setTimeout(function() { if(req.onsuccess) req.onsuccess({target: {result: null}}); }, 0);
+                             return req;
+                          },
+                          getAll: function() {
+                             var req = {}; 
+                             setTimeout(function() { if(req.onsuccess) req.onsuccess({target: {result: []}}); }, 0);
+                             return req;
+                          }
+                        }; 
+                      } 
+                    }; 
+                  },
+                  close: function() {}
                 },
-                addEventListener: function() {},
-                removeEventListener: function() {},
+                error: null,
                 onsuccess: null,
-                onerror: null
+                onupgradeneeded: null,
+                addEventListener: function() {},
+                removeEventListener: function() {}
               };
-            }
+
+              // Simulate Async DB Opening
+              setTimeout(function() {
+                if (request.onupgradeneeded) {
+                  request.onupgradeneeded({ target: request });
+                }
+                if (request.onsuccess) {
+                  request.onsuccess({ target: request });
+                }
+              }, 0);
+
+              return request;
+            },
+            deleteDatabase: function() {
+              var req = {};
+              setTimeout(function() { if(req.onsuccess) req.onsuccess(); }, 0);
+              return req;
+            },
+            cmp: function(a, b) { return 0; }
           };
         }
 
-        function patchStorage(type) {
+        // 4. APPLY PATCHES (Forcefully if needed)
+        function patchApi(name, mockFactory) {
           try {
-            // Check if we can access the property at all (this triggers SecurityError in strict sandboxes)
-            var storage = window[type];
-            // Check if we can write to it
-            var x = '__storage_test__';
-            storage.setItem(x, x);
-            storage.removeItem(x);
+            // Test access
+            var testKey = '__test_storage__';
+            window[name].setItem(testKey, testKey);
+            window[name].removeItem(testKey);
           } catch (e) {
-            console.warn('Storage access is restricted (' + type + '). Using in-memory polyfill.');
+            console.warn('Patching blocked API: ' + name);
             try {
-              Object.defineProperty(window, type, {
-                value: type === 'indexedDB' ? getIndexedDBMock() : getStorageMock(),
-                configurable: true,
-                writable: true
+              Object.defineProperty(window, name, {
+                get: function() { return mockFactory(); },
+                configurable: true
               });
-            } catch(err) {
-              console.warn('Failed to patch ' + type + ' (likely non-configurable). Errors may occur.');
+            } catch (err) {
+              console.warn('Could not patch ' + name, err);
             }
           }
         }
 
-        // Patch all potentially blocked APIs
-        patchStorage('localStorage');
-        patchStorage('sessionStorage');
-        patchStorage('indexedDB'); // Critical: Monaco often uses this
-
-        // --- 2. Aggressive Global Error Suppression ---
-        // Even with polyfills, some internal browser checks might still throw exceptions.
-        // We catch these at the window level to prevent the app from crashing.
+        patchApi('localStorage', createStorageMock);
+        patchApi('sessionStorage', createStorageMock);
         
-        var IGNORED_ERRORS = [
-          'Access to storage',
-          'QuotaExceeded',
-          'security check',
-          'SecurityError',
-          'cdn.tailwindcss.com'
-        ];
+        // IndexedDB is trickier, often throws on property access, not just usage
+        try {
+           // If accessing window.indexedDB throws, or if open throws
+           var db = window.indexedDB;
+           if (!db) throw new Error("No IDB");
+        } catch(e) {
+           Object.defineProperty(window, 'indexedDB', {
+             get: function() { return createIDBMock(); },
+             configurable: true
+           });
+        }
 
-        var shouldIgnore = function(msg) {
-          if (!msg) return false;
-          var str = String(msg);
-          return IGNORED_ERRORS.some(function(err) {
-            return str.indexOf(err) > -1;
-          });
-        };
-
-        // Suppress console.warn for Tailwind
-        var originalWarn = console.warn;
+        // Suppress Tailwind CDN Warning
+        var origWarn = console.warn;
         console.warn = function() {
-          if (arguments[0] && shouldIgnore(arguments[0])) return;
-          originalWarn.apply(console, arguments);
+          if (arguments[0] && typeof arguments[0] === 'string' && arguments[0].indexOf('cdn.tailwindcss.com') > -1) return;
+          origWarn.apply(console, arguments);
         };
 
-        // Suppress Synchronous Errors
-        window.addEventListener('error', function(e) {
-          if (shouldIgnore(e.message)) {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            return true;
-          }
-        }, true);
-
-        // Suppress Asynchronous/Promise Errors (The main culprit: "Uncaught (in promise)")
-        window.addEventListener('unhandledrejection', function(e) {
-          // Extract message from various promise rejection formats
-          var msg = '';
-          if (e.reason) {
-            if (e.reason.message) msg = e.reason.message;
-            else msg = String(e.reason);
-          }
-          
-          if (shouldIgnore(msg)) {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-          }
-        }, true);
       })();
 
       // Tailwind Config
@@ -137,8 +180,8 @@
             },
             colors: {
               brand: {
-                primary: 'var(--brand-primary)', // #2EA446
-                secondary: 'var(--brand-secondary)', // #AFD244
+                primary: 'var(--brand-primary)', 
+                secondary: 'var(--brand-secondary)',
               },
               glass: {
                 text: 'var(--glass-text)',
@@ -171,17 +214,15 @@
         --brand-secondary: #AFD244;
         
         /* Glass Vars - Light Mode */
-        /* High transparency, heavy blur, white tint */
         --glass-bg: rgba(255, 255, 255, 0.65);
         --glass-border: rgba(255, 255, 255, 0.4); 
         --glass-highlight: rgba(255, 255, 255, 0.8);
         --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
         
-        --glass-text: #1d1d1f; /* Apple Text Black */
-        --glass-text-sec: #86868b; /* Apple Text Gray */
+        --glass-text: #1d1d1f; 
+        --glass-text-sec: #86868b; 
         
-        /* Editor Specifics */
-        --editor-bg: rgba(255, 255, 255, 0.5); /* See-through to liquid background */
+        --editor-bg: rgba(255, 255, 255, 0.5); 
       }
 
       .dark-mode {
@@ -208,21 +249,18 @@
       }
 
       /* LIQUID GLASS UTILITIES */
-      
-      /* The main glass panel effect */
       .glass-panel {
         background: var(--glass-bg);
         backdrop-filter: blur(40px) saturate(180%);
         -webkit-backdrop-filter: blur(40px) saturate(180%);
         border: 1px solid var(--glass-border);
         box-shadow: var(--glass-shadow);
-        border-top: 1px solid var(--glass-highlight); /* Light catching top edge */
+        border-top: 1px solid var(--glass-highlight);
       }
 
-      /* Sidebar specific - lighter touch */
       .glass-sidebar {
-        background: rgba(255, 255, 255, 0.4); /* Lighter in light mode */
-        backdrop-filter: blur(50px) saturate(200%); /* Heavy blur */
+        background: rgba(255, 255, 255, 0.4); 
+        backdrop-filter: blur(50px) saturate(200%);
         -webkit-backdrop-filter: blur(50px) saturate(200%);
         border-right: 1px solid var(--glass-border);
       }
@@ -231,7 +269,6 @@
          background: rgba(20, 20, 20, 0.5);
       }
 
-      /* Header specific - remove grayness */
       .glass-header {
         background: rgba(255, 255, 255, 0.3);
         backdrop-filter: blur(20px);
@@ -243,7 +280,6 @@
         background: rgba(0, 0, 0, 0.3);
       }
 
-      /* Inputs inside glass */
       .glass-input {
         background: rgba(0, 0, 0, 0.05);
         border: 1px solid transparent;
@@ -261,7 +297,6 @@
         background: rgba(0, 0, 0, 0.5);
       }
 
-      /* Scrollbar */
       ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
