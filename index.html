@@ -4,9 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cursor Online Free</title>
+    
+    <!-- Dynamic Favicon to prevent 404 errors -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%232EA446%22/><path d=%22M35 30 L65 50 L35 70%22 fill=%22none%22 stroke=%22white%22 stroke-width=%228%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>" />
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Error Handling for Sandboxed Environments -->
     <script>
+      // Suppress 'Access to storage is not allowed' errors common in sandboxed deployments (e.g. Monaco Editor internals)
+      window.addEventListener('error', function(e) {
+        if (e.message && (
+            e.message.includes('Access to storage') || 
+            e.message.includes('QuotaExceeded') ||
+            e.message.includes('security check')
+           )) {
+          e.preventDefault();
+          console.warn('Suppressing benign storage access error in sandbox environment.');
+          return true;
+        }
+      });
+      
+      // Tailwind Config
       tailwind.config = {
         darkMode: 'class',
         theme: {
