@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cursor Online Free</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            },
+            colors: {
+              brand: {
+                primary: 'var(--brand-primary)', // #2EA446
+                secondary: 'var(--brand-secondary)', // #AFD244
+              },
+              glass: {
+                text: 'var(--glass-text)',
+                textSec: 'var(--glass-text-sec)',
+              },
+            },
+            backgroundImage: {
+              'premium-gradient': 'linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%)',
+            },
+            animation: {
+              'blob': 'blob 10s infinite',
+            },
+            keyframes: {
+              blob: {
+                '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                '100%': { transform: 'translate(0px, 0px) scale(1)' },
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      :root {
+        /* Default Theme (Light/White) - Apple Style */
+        --bg-app: #F5F5F7; /* Apple System Gray 6 (Light) */
+        --brand-primary: #2EA446;
+        --brand-secondary: #AFD244;
+        
+        /* Glass Vars - Light Mode */
+        /* High transparency, heavy blur, white tint */
+        --glass-bg: rgba(255, 255, 255, 0.65);
+        --glass-border: rgba(255, 255, 255, 0.4); 
+        --glass-highlight: rgba(255, 255, 255, 0.8);
+        --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        
+        --glass-text: #1d1d1f; /* Apple Text Black */
+        --glass-text-sec: #86868b; /* Apple Text Gray */
+        
+        /* Editor Specifics */
+        --editor-bg: rgba(255, 255, 255, 0.5); /* See-through to liquid background */
+      }
+
+      .dark-mode {
+        --bg-app: #000000;
+        --brand-primary: #3cc95a;
+        
+        /* Glass Vars - Dark Mode */
+        --glass-bg: rgba(30, 30, 35, 0.60);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --glass-highlight: rgba(255, 255, 255, 0.15);
+        --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        
+        --glass-text: #f5f5f7;
+        --glass-text-sec: #86868b;
+        
+        --editor-bg: rgba(0, 0, 0, 0.4);
+      }
+
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--bg-app);
+        margin: 0;
+        overflow: hidden;
+      }
+
+      /* LIQUID GLASS UTILITIES */
+      
+      /* The main glass panel effect */
+      .glass-panel {
+        background: var(--glass-bg);
+        backdrop-filter: blur(40px) saturate(180%);
+        -webkit-backdrop-filter: blur(40px) saturate(180%);
+        border: 1px solid var(--glass-border);
+        box-shadow: var(--glass-shadow);
+        border-top: 1px solid var(--glass-highlight); /* Light catching top edge */
+      }
+
+      /* Sidebar specific - lighter touch */
+      .glass-sidebar {
+        background: rgba(255, 255, 255, 0.4); /* Lighter in light mode */
+        backdrop-filter: blur(50px) saturate(200%); /* Heavy blur */
+        -webkit-backdrop-filter: blur(50px) saturate(200%);
+        border-right: 1px solid var(--glass-border);
+      }
+      
+      .dark-mode .glass-sidebar {
+         background: rgba(20, 20, 20, 0.5);
+      }
+
+      /* Header specific - remove grayness */
+      .glass-header {
+        background: rgba(255, 255, 255, 0.3);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid var(--glass-border);
+      }
+      
+      .dark-mode .glass-header {
+        background: rgba(0, 0, 0, 0.3);
+      }
+
+      /* Inputs inside glass */
+      .glass-input {
+        background: rgba(0, 0, 0, 0.05);
+        border: 1px solid transparent;
+        transition: all 0.2s;
+      }
+      .glass-input:focus {
+        background: rgba(255, 255, 255, 0.5);
+        border-color: var(--brand-primary);
+        box-shadow: 0 0 0 2px rgba(46, 164, 70, 0.2);
+      }
+      .dark-mode .glass-input {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .dark-mode .glass-input:focus {
+        background: rgba(0, 0, 0, 0.5);
+      }
+
+      /* Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(0,0,0,0.1);
+        border-radius: 4px;
+      }
+      .dark-mode ::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.2);
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--brand-primary);
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-markdown": "https://aistudiocdn.com/react-markdown@^10.1.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@monaco-editor/react": "https://aistudiocdn.com/@monaco-editor/react@^4.7.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
