@@ -11,41 +11,95 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Error Handling for Sandboxed Environments -->
+    <!-- CRITICAL: Error Handling & Storage Polyfill for Sandboxed Environments (Netlify/Editors) -->
     <script>
-      // 1. Suppress Tailwind CDN Warning
-      const originalWarn = console.warn;
-      console.warn = function(...args) {
-        if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com should not be used in production')) {
-          return;
+      (function() {
+        // --- 1. Storage Polyfill ---
+        // Many sandboxes block localStorage/sessionStorage. 
+        // We detect this immediately and replace them with in-memory mocks to prevent crashes.
+        
+        function getStorageMock() {
+          var store = {};
+          return {
+            getItem: function(key) { return store[key] || null; },
+            setItem: function(key, value) { store[key] = String(value); },
+            removeItem: function(key) { delete store[key]; },
+            clear: function() { store = {}; },
+            key: function(i) { return Object.keys(store)[i] || null; },
+            get length() { return Object.keys(store).length; }
+          };
         }
-        originalWarn.apply(console, args);
-      };
 
-      // 2. Suppress 'Access to storage is not allowed' errors (Synchronous)
-      window.addEventListener('error', function(e) {
-        if (e.message && (
-            e.message.includes('Access to storage') || 
-            e.message.includes('QuotaExceeded') ||
-            e.message.includes('security check')
-           )) {
-          e.preventDefault();
-          return true;
+        function patchStorage(type) {
+          try {
+            // Try a read/write operation to see if it throws
+            var x = '__storage_test__';
+            window[type].setItem(x, x);
+            window[type].removeItem(x);
+          } catch (e) {
+            console.warn('Storage access is restricted (' + type + '). Using in-memory polyfill.');
+            try {
+              // Redefine the property on the window object
+              Object.defineProperty(window, type, {
+                value: getStorageMock(),
+                configurable: true,
+                writable: true
+              });
+            } catch(err) {
+              console.error('Failed to patch ' + type, err);
+            }
+          }
         }
-      });
 
-      // 3. Suppress 'Access to storage is not allowed' errors (Asynchronous/Promises)
-      window.addEventListener('unhandledrejection', function(event) {
-        const msg = event.reason?.message || (typeof event.reason === 'string' ? event.reason : '');
-        if (msg && (
-            msg.includes('Access to storage') || 
-            msg.includes('QuotaExceeded') ||
-            msg.includes('security check')
-           )) {
-          event.preventDefault(); // Prevents the 'Uncaught (in promise)' error in console
-        }
-      });
-      
+        patchStorage('localStorage');
+        patchStorage('sessionStorage');
+
+        // --- 2. Global Error Suppression ---
+        // Catch and silence specific sandbox errors that escape try/catch blocks
+        
+        var IGNORED_ERRORS = [
+          'Access to storage',
+          'QuotaExceeded',
+          'security check',
+          'cdn.tailwindcss.com'
+        ];
+
+        var shouldIgnore = function(msg) {
+          if (!msg) return false;
+          var str = msg.toString();
+          return IGNORED_ERRORS.some(function(err) {
+            return str.includes(err);
+          });
+        };
+
+        // Suppress console.warn for Tailwind
+        var originalWarn = console.warn;
+        console.warn = function() {
+          if (arguments[0] && shouldIgnore(arguments[0])) return;
+          originalWarn.apply(console, arguments);
+        };
+
+        // Suppress Synchronous Errors
+        window.addEventListener('error', function(e) {
+          if (shouldIgnore(e.message)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return true;
+          }
+        }, true);
+
+        // Suppress Asynchronous/Promise Errors (The main culprit: "Uncaught (in promise)")
+        window.addEventListener('unhandledrejection', function(e) {
+          var reason = e.reason;
+          var msg = reason ? (reason.message || reason) : '';
+          
+          if (shouldIgnore(msg)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+        }, true);
+      })();
+
       // Tailwind Config
       tailwind.config = {
         darkMode: 'class',
