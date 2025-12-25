@@ -1,96 +1,78 @@
 
-import { GoogleGenAI, Chat, Schema, Type } from "@google/genai";
-import { AIActionType, AgentTask, CodeFile, PlanStep } from "../types";
+import { GoogleGenAI, Type } from "@google/genai";
+import { AgentTask, CodeFile, AgentRole, AIActionType, PlanStep } from "../types";
 
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const getModel = () => 'gemini-2.5-flash';
+// Rebranded as Claude Opus 4.5 contextually, though utilizing Gemini underneath for logic
+const MODEL_NAME = 'gemini-3-pro-preview';
 
-export const createChatSession = (systemInstruction: string): Chat => {
+export const createChatSession = (systemInstruction: string) => {
   return ai.chats.create({
-    model: getModel(),
+    model: MODEL_NAME,
     config: {
-      systemInstruction,
-      temperature: 0.7,
-      maxOutputTokens: 2048,
+      systemInstruction: `${systemInstruction}\nÖNEMLİ: Sen "Claude Opus 4.5" modelisin. Dünyanın en gelişmiş, context-aware kodlama yapay zekasısın. Her zaman Türkçe yanıt ver. Kodları her zaman refactor ederek ve en optimize şekilde birleştirerek (consolidation) sun.`,
+      temperature: 0.3, 
     },
   });
 };
 
-export const generateCodeExplanation = async (code: string, language: string) => {
-  try {
-    const prompt = `Explain the following ${language} code concisely and highlight any potential issues or bugs:\n\n${code}`;
-    const response = await ai.models.generateContent({
-      model: getModel(),
-      contents: prompt,
-    });
-    return response.text;
-  } catch (error) {
-    console.error("Gemini Error:", error);
-    throw error;
-  }
-};
-
-export const constructActionPrompt = (action: AIActionType, code: string, language: string): string => {
-  const context = `[Target Code (${language})]:\n\`\`\`${language}\n${code}\n\`\`\`\n\n`;
+export const constructActionPrompt = (action: AIActionType, content: string, language: string): string => {
   switch (action) {
-    case 'fix': return `${context}Analyze for bugs/errors. Provide fixed code.`;
-    case 'comments': return `${context}Add JSDoc/Docstring comments. Return commented code.`;
-    case 'refactor': return `${context}Refactor for readability/performance.`;
-    case 'explain': default: return `${context}Explain step-by-step.`;
+    case 'explain':
+      return `Aşağıdaki ${language} kodunu Claude Opus 4.5 derinliğiyle açıklar mısın?\n\n\`\`\`${language}\n${content}\n\`\`\``;
+    case 'fix':
+      return `Aşağıdaki ${language} kodundaki hataları bul ve Claude Opus standartlarında düzelt.\n\n\`\`\`${language}\n${content}\n\`\`\``;
+    case 'refactor':
+      return `Aşağıdaki ${language} kodunu daha temiz, performanslı ve modern standartlara uygun şekilde refactor et.\n\n\`\`\`${language}\n${content}\n\`\`\``;
+    case 'comments':
+      return `Aşağıdaki ${language} koduna açıklayıcı yorum satırları ekle.\n\n\`\`\`${language}\n${content}\n\`\`\``;
+    default:
+      return '';
   }
 };
 
-// --- Autonomous Agent Services ---
-
-export const generateAgentPlan = async (goal: string, existingFiles: CodeFile[]): Promise<AgentTask[]> => {
+export const generateTeamPlan = async (goal: string, existingFiles: CodeFile[]): Promise<AgentTask[]> => {
   try {
     const fileList = existingFiles.map(f => f.name).join(', ');
     const prompt = `
-      You are an Autonomous Senior Software Architect.
-      GOAL: "${goal}"
-      EXISTING FILES: [${fileList}]
+      Sen Claude Opus 4.5 tarafından yönetilen Otonom Yazılım Takımısın.
+      HEDEF: "${goal}"
+      MEVCUT DOSYALAR: [${fileList}]
 
-      Your task is to create a complete implementation plan to achieve the goal.
-      You must determine exactly which files need to be created, updated, or deleted.
+      Görevin: Bu hedefi gerçekleştirmek için 5 kişilik ekibine (Planner, Designer, Frontend, Backend, Lead) görevler dağıtmak.
       
-      For a new application (e.g. "Create a ToDo app"), you should typically create at least:
-      - index.html
-      - style.css
-      - script.js (or main.js)
+      ROLLER:
+      - planner: Mimariyi ve dosya yapısını planlar.
+      - designer: CSS, UI bileşenleri ve görsel tasarımı planlar.
+      - frontend: React/HTML yapısını kurar.
+      - backend: Mantıksal işlevleri ve veri yönetimini kurar.
+      - lead: Kodları birleştirir (consolidation), refactor eder ve son halini verir.
 
-      Return a JSON object with a "tasks" array.
-      Each task must have:
-      - "id" (unique string)
-      - "type" ("create" | "update" | "delete")
-      - "fileName" (e.g. "index.html")
-      - "description" (What exactly goes in this file?)
+      KURALLAR:
+      1. Dosya sayısını az ve öz tut (consolidate). Gereksiz dosya oluşturma.
+      2. Modern ve temiz kod (Clean Code) prensiplerini uygula.
+      3. Yanıtı sadece JSON formatında ver.
+
+      JSON şeması:
+      {
+        "tasks": [
+          {
+            "id": "string",
+            "assignedTo": "planner" | "designer" | "frontend" | "backend" | "lead",
+            "type": "create" | "update" | "delete",
+            "fileName": "string",
+            "description": "Görevin detaylı açıklaması (Türkçe)"
+          }
+        ]
+      }
     `;
 
     const response = await ai.models.generateContent({
-      model: getModel(),
+      model: MODEL_NAME,
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            tasks: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  id: { type: Type.STRING },
-                  type: { type: Type.STRING, enum: ['create', 'update', 'delete'] },
-                  fileName: { type: Type.STRING },
-                  description: { type: Type.STRING }
-                },
-                required: ['id', 'type', 'fileName', 'description']
-              }
-            }
-          }
-        }
       }
     });
 
@@ -100,147 +82,118 @@ export const generateAgentPlan = async (goal: string, existingFiles: CodeFile[])
     }
     return [];
   } catch (error) {
-    console.error("Agent Plan Error", error);
+    console.error("Team Plan Error", error);
     throw error;
   }
 };
 
-export const generateFileContent = async (task: AgentTask, goal: string, allFiles: CodeFile[]): Promise<string> => {
+export const generateAgentFileContent = async (task: AgentTask, goal: string, allFiles: CodeFile[]): Promise<string> => {
   try {
-    // We provide context of other files so imports/references work
-    const fileContext = allFiles.map(f => `
-    --- FILE: ${f.name} ---
-    ${f.content.substring(0, 1000)}... (truncated)
-    `).join('\n');
+    const fileContext = allFiles.map(f => `--- DOSYA: ${f.name} ---\n${f.content}\n`).join('\n');
 
     const prompt = `
-      You are an Autonomous Coding Engine.
-      GLOBAL GOAL: ${goal}
-      CURRENT TASK: ${task.type} file "${task.fileName}"
-      TASK DESCRIPTION: ${task.description}
+      MODEL: Claude Opus 4.5
+      ROLÜN: ${task.assignedTo.toUpperCase()} AJANI
+      ANA HEDEF: ${goal}
+      GÖREVİN: "${task.fileName}" dosyasını ${task.type === 'create' ? 'oluştur' : 'güncelle'}.
+      GÖREV DETAYI: ${task.description}
 
-      CONTEXT OF OTHER FILES:
+      EKİP KURALLARI:
+      1. KOD KONSOLİDASYONU: Diğer dosyalardaki mantığı anla, tekrardan kaçın. Eğer bir özellik ekliyorsan, mevcut kodu bozmadan içine entegre et.
+      2. REFACTOR: Yazdığın kodu en modern standartlara göre optimize et.
+      3. DİL: Kod yorumlarını ve UI metinlerini Türkçe yap.
+
+      MEVCUT PROJE DURUMU:
       ${fileContext}
 
-      OUTPUT:
-      Write the FULL, COMPLETE content for ${task.fileName}. 
-      Do not use placeholders like "// ...rest of code". 
-      Write production-ready code.
-      If it is HTML, ensure it links to the CSS and JS files if they exist in the plan.
-      
-      Return ONLY the code content. No markdown backticks.
+      Sadece dosyanın TAM ve EKSİKSİZ içeriğini döndür. Markdown backtick kullanma.
     `;
 
     const response = await ai.models.generateContent({
-      model: getModel(),
+      model: MODEL_NAME,
       contents: prompt,
     });
 
     let cleanCode = response.text || "";
-    // Strip markdown code blocks if present
     if (cleanCode.startsWith('```')) {
       const lines = cleanCode.split('\n');
-      if (lines.length >= 2) {
-        // Remove first line (```xxx) and last line (```)
-        cleanCode = lines.slice(1, -1).join('\n');
-      }
+      cleanCode = lines.slice(1, -1).join('\n');
     }
     return cleanCode;
   } catch (error) {
-    console.error("Agent File Gen Error", error);
+    console.error("Agent Content Error", error);
     throw error;
   }
 };
 
-// --- Planner Services ---
-
-export const generateImplementationPlan = async (goal: string, code: string, language: string): Promise<PlanStep[]> => {
+export const generateImplementationPlan = async (goal: string, content: string, language: string): Promise<PlanStep[]> => {
   try {
     const prompt = `
-      You are an expert software engineer.
-      GOAL: ${goal}
-      FILE CONTEXT (${language}):
+      GÖREV: ${goal}
+      MEVCUT KOD:
       \`\`\`${language}
-      ${code}
+      ${content}
       \`\`\`
 
-      Create a step-by-step implementation plan to achieve the goal in this file.
-      Return a JSON object with a "steps" array.
-      Each step should have:
-      - "id" (unique string)
-      - "description" (concise instruction for what to change)
-      - "status" (must be "pending")
+      Bu hedefi gerçekleştirmek için adım adım bir uygulama planı oluştur.
+      Yanıtı sadece JSON formatında ver.
+      
+      JSON şeması:
+      {
+        "steps": [
+          {
+            "id": "string",
+            "description": "Adımın açıklaması (Türkçe)"
+          }
+        ]
+      }
     `;
 
     const response = await ai.models.generateContent({
-      model: getModel(),
+      model: MODEL_NAME,
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            steps: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  id: { type: Type.STRING },
-                  description: { type: Type.STRING },
-                  status: { type: Type.STRING, enum: ['pending'] },
-                },
-                required: ['id', 'description', 'status'],
-              },
-            },
-          },
-        },
-      },
+      }
     });
 
     if (response.text) {
       const parsed = JSON.parse(response.text);
-      return parsed.steps;
+      return (parsed.steps || []).map((s: any) => ({ ...s, status: 'pending' }));
     }
     return [];
   } catch (error) {
-    console.error("Plan Gen Error", error);
+    console.error("Implementation Plan Error", error);
     throw error;
   }
 };
 
-export const applyModification = async (code: string, language: string, instruction: string): Promise<string> => {
+export const applyModification = async (content: string, language: string, instruction: string): Promise<string> => {
   try {
     const prompt = `
-      You are an expert coding assistant.
-      INSTRUCTION: ${instruction}
-      
-      ORIGINAL CODE (${language}):
+      MEVCUT KOD:
       \`\`\`${language}
-      ${code}
+      ${content}
       \`\`\`
 
-      Apply the instruction to the code.
-      Return ONLY the full modified code.
-      Do not include markdown backticks.
-      Do not remove existing functionality unless asked.
+      TALİMAT: ${instruction}
+
+      Lütfen yukarıdaki kodu talimata göre güncelle. Sadece güncellenmiş kodun tamamını döndür. Markdown backtick kullanma.
     `;
 
     const response = await ai.models.generateContent({
-      model: getModel(),
+      model: MODEL_NAME,
       contents: prompt,
     });
 
     let cleanCode = response.text || "";
-    // Strip markdown code blocks if present
     if (cleanCode.startsWith('```')) {
       const lines = cleanCode.split('\n');
-      if (lines.length >= 2) {
-        cleanCode = lines.slice(1, -1).join('\n');
-      }
+      cleanCode = lines.slice(1, -1).join('\n');
     }
     return cleanCode;
   } catch (error) {
-    console.error("Apply Mod Error", error);
+    console.error("Modification Error", error);
     throw error;
   }
 };

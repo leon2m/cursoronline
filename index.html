@@ -1,206 +1,81 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cursor Online Free</title>
+    <title>Cursor Premium | Powered by Claude Opus 4.5</title>
     
-    <!-- Dynamic Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%232EA446%22/><path d=%22M35 30 L65 50 L35 70%22 fill=%22none%22 stroke=%22white%22 stroke-width=%228%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>" />
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     
-    <!-- CRITICAL: Advanced Storage Polyfill & Error Suppression -->
     <script>
       (function() {
-        // 1. IMMEDIATE ERROR TRAP (Must be first)
-        // Catches "Uncaught (in promise)" errors caused by storage blocking
-        var IGNORED_MSGS = [
-          'Access to storage',
-          'QuotaExceeded',
-          'SecurityError',
-          'cdn.tailwindcss.com',
-          'load resource'
-        ];
-
+        var IGNORED_MSGS = ['Access to storage', 'QuotaExceeded', 'SecurityError'];
         function shouldIgnore(msg) {
           if (!msg) return false;
           var str = String(msg);
           return IGNORED_MSGS.some(function(err) { return str.indexOf(err) > -1; });
         }
-
-        window.addEventListener('error', function(e) {
-          if (shouldIgnore(e.message)) {
-            e.preventDefault(); 
-            e.stopImmediatePropagation();
-          }
-        }, true);
-
-        window.addEventListener('unhandledrejection', function(e) {
+        window.addEventListener('error', function(e) { if (shouldIgnore(e.message)) e.preventDefault(); }, true);
+        window.addEventListener('unhandledrejection', function(e) { 
           var msg = e.reason ? (e.reason.message || String(e.reason)) : '';
-          if (shouldIgnore(msg)) {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-          }
+          if (shouldIgnore(msg)) e.preventDefault();
         }, true);
 
-        // 2. IN-MEMORY STORAGE POLYFILLS
-        // Replaces LocalStorage/SessionStorage with RAM objects
-        function createStorageMock() {
-          var store = {};
-          return {
-            getItem: function(key) { return store[key] || null; },
-            setItem: function(key, value) { store[key] = String(value); },
-            removeItem: function(key) { delete store[key]; },
-            clear: function() { store = {}; },
-            key: function(i) { return Object.keys(store)[i] || null; },
-            get length() { return Object.keys(store).length; }
-          };
-        }
-
-        // 3. ADVANCED INDEXEDDB MOCK
-        // Monaco Editor relies heavily on IDB Promises. We must fake the async success events.
-        function createIDBMock() {
-          return {
-            open: function(name, version) {
-              var request = {
-                result: {
-                  objectStoreNames: { contains: function() { return false; } },
-                  createObjectStore: function() { return { createIndex: function() {}, put: function() {}, delete: function() {} }; },
-                  transaction: function() { 
-                    return { 
-                      objectStore: function() { 
-                        return { 
-                          get: function() { 
-                             var req = {}; 
-                             setTimeout(function() { if(req.onsuccess) req.onsuccess({target: {result: null}}); }, 0);
-                             return req; 
-                          }, 
-                          put: function() { 
-                             var req = {}; 
-                             setTimeout(function() { if(req.onsuccess) req.onsuccess({target: {result: null}}); }, 0);
-                             return req;
-                          },
-                          delete: function() {
-                             var req = {}; 
-                             setTimeout(function() { if(req.onsuccess) req.onsuccess({target: {result: null}}); }, 0);
-                             return req;
-                          },
-                          getAll: function() {
-                             var req = {}; 
-                             setTimeout(function() { if(req.onsuccess) req.onsuccess({target: {result: []}}); }, 0);
-                             return req;
-                          }
-                        }; 
-                      } 
-                    }; 
-                  },
-                  close: function() {}
-                },
-                error: null,
-                onsuccess: null,
-                onupgradeneeded: null,
-                addEventListener: function() {},
-                removeEventListener: function() {}
-              };
-
-              // Simulate Async DB Opening
-              setTimeout(function() {
-                if (request.onupgradeneeded) {
-                  request.onupgradeneeded({ target: request });
-                }
-                if (request.onsuccess) {
-                  request.onsuccess({ target: request });
-                }
-              }, 0);
-
-              return request;
-            },
-            deleteDatabase: function() {
-              var req = {};
-              setTimeout(function() { if(req.onsuccess) req.onsuccess(); }, 0);
-              return req;
-            },
-            cmp: function(a, b) { return 0; }
-          };
-        }
-
-        // 4. APPLY PATCHES (Forcefully if needed)
-        function patchApi(name, mockFactory) {
-          try {
-            // Test access
-            var testKey = '__test_storage__';
-            window[name].setItem(testKey, testKey);
-            window[name].removeItem(testKey);
-          } catch (e) {
-            console.warn('Patching blocked API: ' + name);
-            try {
-              Object.defineProperty(window, name, {
-                get: function() { return mockFactory(); },
-                configurable: true
-              });
-            } catch (err) {
-              console.warn('Could not patch ' + name, err);
-            }
-          }
-        }
-
-        patchApi('localStorage', createStorageMock);
-        patchApi('sessionStorage', createStorageMock);
-        
-        // IndexedDB is trickier, often throws on property access, not just usage
-        try {
-           // If accessing window.indexedDB throws, or if open throws
-           var db = window.indexedDB;
-           if (!db) throw new Error("No IDB");
-        } catch(e) {
-           Object.defineProperty(window, 'indexedDB', {
-             get: function() { return createIDBMock(); },
-             configurable: true
-           });
-        }
-
-        // Suppress Tailwind CDN Warning
-        var origWarn = console.warn;
-        console.warn = function() {
-          if (arguments[0] && typeof arguments[0] === 'string' && arguments[0].indexOf('cdn.tailwindcss.com') > -1) return;
-          origWarn.apply(console, arguments);
+        // Minimalist storage mock
+        var store = {};
+        var mock = {
+          getItem: function(k) { return store[k] || null; },
+          setItem: function(k, v) { store[k] = String(v); },
+          removeItem: function(k) { delete store[k]; },
+          clear: function() { store = {}; },
+          key: function(i) { return Object.keys(store)[i] || null; },
+          get length() { return Object.keys(store).length; }
         };
-
+        try { localStorage.setItem('t','t'); } catch(e) {
+          Object.defineProperty(window, 'localStorage', { get: function() { return mock; } });
+        }
       })();
 
-      // Tailwind Config
       tailwind.config = {
         darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
-              sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+              sans: ['Inter', 'sans-serif'],
+              display: ['Poppins', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
             },
             colors: {
               brand: {
-                primary: 'var(--brand-primary)', 
-                secondary: 'var(--brand-secondary)',
-              },
-              glass: {
-                text: 'var(--glass-text)',
-                textSec: 'var(--glass-text-sec)',
+                primary: '#2EA446', 
+                secondary: '#AFD244',
+                dark: '#050505',
+                accent: '#3b82f6'
               },
             },
             backgroundImage: {
-              'premium-gradient': 'linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%)',
+              'premium-gradient': 'linear-gradient(135deg, #2EA446 0%, #AFD244 100%)',
+              'opus-gradient': 'linear-gradient(135deg, #7C3AED 0%, #DB2777 100%)',
             },
             animation: {
-              'blob': 'blob 10s infinite',
+                'float': 'float 6s ease-in-out infinite',
+                'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                'spin-slow': 'spin 12s linear infinite',
+                'cursor-blink': 'cursorBlink 1s step-end infinite',
             },
             keyframes: {
-              blob: {
-                '0%': { transform: 'translate(0px, 0px) scale(1)' },
-                '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
-                '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
-                '100%': { transform: 'translate(0px, 0px) scale(1)' },
-              }
+                float: {
+                    '0%, 100%': { transform: 'translateY(0)' },
+                    '50%': { transform: 'translateY(-20px)' },
+                },
+                cursorBlink: {
+                  '0%, 100%': { opacity: '1' },
+                  '50%': { opacity: '0' },
+                }
             }
           }
         }
@@ -208,111 +83,55 @@
     </script>
     <style>
       :root {
-        /* Default Theme (Light/White) - Apple Style */
-        --bg-app: #F5F5F7; /* Apple System Gray 6 (Light) */
+        --bg-app: #FFFFFF;
         --brand-primary: #2EA446;
-        --brand-secondary: #AFD244;
-        
-        /* Glass Vars - Light Mode */
-        --glass-bg: rgba(255, 255, 255, 0.65);
-        --glass-border: rgba(255, 255, 255, 0.4); 
-        --glass-highlight: rgba(255, 255, 255, 0.8);
-        --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
-        
-        --glass-text: #1d1d1f; 
-        --glass-text-sec: #86868b; 
-        
-        --editor-bg: rgba(255, 255, 255, 0.5); 
       }
 
       .dark-mode {
-        --bg-app: #000000;
-        --brand-primary: #3cc95a;
-        
-        /* Glass Vars - Dark Mode */
-        --glass-bg: rgba(30, 30, 35, 0.60);
-        --glass-border: rgba(255, 255, 255, 0.1);
-        --glass-highlight: rgba(255, 255, 255, 0.15);
-        --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-        
-        --glass-text: #f5f5f7;
-        --glass-text-sec: #86868b;
-        
-        --editor-bg: rgba(0, 0, 0, 0.4);
+        --bg-app: #0a0a0a;
       }
 
       body {
         font-family: 'Inter', sans-serif;
         background-color: var(--bg-app);
         margin: 0;
-        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
       }
 
-      /* LIQUID GLASS UTILITIES */
-      .glass-panel {
-        background: var(--glass-bg);
-        backdrop-filter: blur(40px) saturate(180%);
-        -webkit-backdrop-filter: blur(40px) saturate(180%);
-        border: 1px solid var(--glass-border);
-        box-shadow: var(--glass-shadow);
-        border-top: 1px solid var(--glass-highlight);
-      }
-
-      .glass-sidebar {
-        background: rgba(255, 255, 255, 0.4); 
-        backdrop-filter: blur(50px) saturate(200%);
-        -webkit-backdrop-filter: blur(50px) saturate(200%);
-        border-right: 1px solid var(--glass-border);
+      .perspective-container {
+        perspective: 1200px;
+        transform-style: preserve-3d;
       }
       
-      .dark-mode .glass-sidebar {
-         background: rgba(20, 20, 20, 0.5);
+      .transform-style-3d {
+        transform-style: preserve-3d;
       }
 
-      .glass-header {
-        background: rgba(255, 255, 255, 0.3);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border-bottom: 1px solid var(--glass-border);
+      /* CRT Terminal Effect */
+      .crt-screen {
+        background-color: #0c0c0c;
+        background-image: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+        background-size: 100% 2px, 3px 100%;
+        box-shadow: inset 0 0 20px rgba(0,0,0,1);
       }
       
-      .dark-mode .glass-header {
-        background: rgba(0, 0, 0, 0.3);
+      .crt-text {
+        text-shadow: 0 0 5px rgba(46, 164, 70, 0.5);
       }
 
-      .glass-input {
-        background: rgba(0, 0, 0, 0.05);
-        border: 1px solid transparent;
-        transition: all 0.2s;
-      }
-      .glass-input:focus {
-        background: rgba(255, 255, 255, 0.5);
-        border-color: var(--brand-primary);
-        box-shadow: 0 0 0 2px rgba(46, 164, 70, 0.2);
-      }
-      .dark-mode .glass-input {
-        background: rgba(255, 255, 255, 0.1);
-      }
-      .dark-mode .glass-input:focus {
-        background: rgba(0, 0, 0, 0.5);
-      }
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar { width: 6px; }
+      ::-webkit-scrollbar-track { background: #000; }
+      ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+      ::-webkit-scrollbar-thumb:hover { background: #2EA446; }
 
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+      .apple-modal-enter {
+        animation: apple-slide-up 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
       }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: rgba(0,0,0,0.1);
-        border-radius: 4px;
-      }
-      .dark-mode ::-webkit-scrollbar-thumb {
-        background: rgba(255,255,255,0.2);
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: var(--brand-primary);
+      @keyframes apple-slide-up {
+        from { opacity: 0; transform: translateY(20px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
       }
     </style>
   <script type="importmap">

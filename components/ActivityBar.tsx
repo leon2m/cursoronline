@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Files, Search, Blocks, Settings, Bot } from 'lucide-react';
 import { ViewMode } from '../types';
@@ -6,12 +7,14 @@ interface ActivityBarProps {
   activeView: ViewMode;
   onViewChange: (view: ViewMode) => void;
   onToggleAI: () => void;
+  onOpenSettings: () => void;
 }
 
 export const ActivityBar: React.FC<ActivityBarProps> = ({
   activeView,
   onViewChange,
-  onToggleAI
+  onToggleAI,
+  onOpenSettings
 }) => {
   const icons = [
     { id: 'explorer', icon: Files, label: 'Explorer' },
@@ -49,12 +52,8 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
             </div>
         </button>
         <button
-            onClick={() => onViewChange('settings')}
-            className={`p-3 rounded-xl transition-colors ${
-                activeView === 'settings' 
-                ? 'text-brand-primary bg-white/50' 
-                : 'text-glass-text-sec hover:text-glass-text hover:bg-black/5'
-            }`}
+            onClick={onOpenSettings}
+            className="p-3 rounded-xl transition-colors text-glass-text-sec hover:text-glass-text hover:bg-black/5 dark:hover:bg-white/10"
             title="Settings"
         >
             <Settings className="w-6 h-6 stroke-[1.5]" />

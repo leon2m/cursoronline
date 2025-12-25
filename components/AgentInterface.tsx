@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { AgentTask, CodeFile, AgentStatus } from '../types';
-import { generateAgentPlan, generateFileContent } from '../services/geminiService';
-import { Bot, Play, Loader2, FileCode, CheckCircle, AlertCircle, ArrowRight, StopCircle } from 'lucide-react';
+import { AgentTask, CodeFile, AgentStatus, AgentRole, AgentMember } from '../types';
+import { generateTeamPlan, generateAgentFileContent } from '../services/geminiService';
+import { Play, Loader2, CheckCircle, Terminal as TerminalIcon, Cpu, User, Sparkles } from 'lucide-react';
 
 interface AgentInterfaceProps {
   files: CodeFile[];
@@ -10,215 +10,211 @@ interface AgentInterfaceProps {
   onCreateFile: (fileName: string, content: string) => void;
   onDeleteFile: (fileName: string) => void;
   onOpenPreview: () => void;
+  onFocusFile: (fileName: string) => void;
+  // External state management to survive tab switches
+  persistentState: {
+    prompt: string;
+    status: AgentStatus;
+    tasks: AgentTask[];
+    logs: string[];
+    activeAgent: AgentRole | null;
+  };
+  setPersistentState: React.Dispatch<React.SetStateAction<any>>;
 }
+
+const TEAM_MEMBERS: AgentMember[] = [
+  { role: 'planner', name: 'Mimar Selim', title: 'System Architect', avatar: 'MS', description: 'Mimarisi ve dosya yapısı.', status: 'idle' },
+  { role: 'designer', name: 'Tasarımcı Derin', title: 'UI/UX Lead', avatar: 'TD', description: 'Görsel estetik ve CSS.', status: 'idle' },
+  { role: 'frontend', name: 'Kodcu Kerem', title: 'Frontend Dev', avatar: 'KK', description: 'React ve etkileşim.', status: 'idle' },
+  { role: 'backend', name: 'Sistem Mert', title: 'Backend Dev', avatar: 'SM', description: 'Veri mantığı ve API.', status: 'idle' },
+  { role: 'lead', name: 'Lider Leyla', title: 'Team Lead', avatar: 'LL', description: 'Refactor ve Final.', status: 'idle' },
+];
 
 export const AgentInterface: React.FC<AgentInterfaceProps> = ({
   files,
   onUpdateFile,
   onCreateFile,
   onDeleteFile,
-  onOpenPreview
+  onOpenPreview,
+  onFocusFile,
+  persistentState,
+  setPersistentState
 }) => {
-  const [prompt, setPrompt] = useState('');
-  const [status, setStatus] = useState<AgentStatus>('idle');
-  const [tasks, setTasks] = useState<AgentTask[]>([]);
-  const [logs, setLogs] = useState<string[]>([]);
+  const { prompt, status, tasks, logs, activeAgent } = persistentState;
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
 
-  const addLog = (msg: string) => setLogs(prev => [...prev, `> ${msg}`]);
+  const updateState = (updates: any) => setPersistentState((prev: any) => ({ ...prev, ...updates }));
 
-  const startAgent = async () => {
-    if (!prompt.trim()) return;
-    setStatus('planning');
-    setLogs([]);
-    setTasks([]);
-    addLog(`Analyzing request: "${prompt}"...`);
-
-    try {
-      const generatedTasks = await generateAgentPlan(prompt, files);
-      setTasks(generatedTasks);
-      addLog(`Plan generated: ${generatedTasks.length} tasks identified.`);
-      setStatus('executing');
-      executePlan(generatedTasks);
-    } catch (error) {
-      addLog(`Error generating plan: ${error}`);
-      setStatus('error');
-    }
+  const addLog = (msg: string) => {
+    updateState({ logs: [...logs, `[${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}] ${msg}`] });
   };
 
-  const executePlan = async (currentTasks: AgentTask[]) => {
-    // Create a local copy of files to pass to the AI context as we build
-    let currentFilesState = [...files];
+  const startTeamBuild = async () => {
+    if (!prompt.trim()) return;
+    updateState({ status: 'working', logs: [], tasks: [], activeAgent: 'planner' });
+    addLog(`Takım Lideri Leyla toplantıyı başlattı. Hedef: "${prompt}"`);
 
-    for (let i = 0; i < currentTasks.length; i++) {
-      const task = currentTasks[i];
+    try {
+      const generatedTasks = await generateTeamPlan(prompt, files);
+      updateState({ tasks: generatedTasks });
+      addLog(`Selim mimariyi çıkardı. ${generatedTasks.length} görev belirlendi.`);
       
-      // Update UI to show current task processing
-      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'in-progress' } : t));
-      addLog(`Executing: ${task.type} ${task.fileName}...`);
+      let currentFilesState = [...files];
 
-      try {
-        if (task.type === 'delete') {
-          onDeleteFile(task.fileName);
-          addLog(`Deleted ${task.fileName}`);
-          currentFilesState = currentFilesState.filter(f => f.name !== task.fileName);
-        } else {
-          // Generate content
-          const content = await generateFileContent(task, prompt, currentFilesState);
+      for (const task of generatedTasks) {
+        updateState({ activeAgent: task.assignedTo });
+        updateState({ tasks: (persistentState.tasks as AgentTask[]).map(t => t.id === task.id ? { ...t, status: 'in-progress' } : t) });
+        
+        const agent = TEAM_MEMBERS.find(m => m.role === task.assignedTo);
+        addLog(`${agent?.name} işleme başladı: ${task.fileName}`);
+        
+        // Auto focus editor on current work
+        onFocusFile(task.fileName);
+
+        try {
+          const content = await generateAgentFileContent(task, prompt, currentFilesState);
           
           if (task.type === 'create') {
             onCreateFile(task.fileName, content);
-            // Update local state for context
-            currentFilesState.push({
-                id: Math.random().toString(),
-                name: task.fileName,
-                content: content,
-                language: 'plaintext' // Simplified
-            } as CodeFile);
-          } else {
+            currentFilesState.push({ id: Math.random().toString(), name: task.fileName, content, language: 'typescript' } as CodeFile);
+          } else if (task.type === 'update') {
             onUpdateFile(task.fileName, content);
-             // Update local state for context
-            currentFilesState = currentFilesState.map(f => f.name === task.fileName ? {...f, content} : f);
+            currentFilesState = currentFilesState.map(f => f.name === task.fileName ? { ...f, content } : f);
+          } else {
+            onDeleteFile(task.fileName);
+            currentFilesState = currentFilesState.filter(f => f.name !== task.fileName);
           }
-          addLog(`Generated content for ${task.fileName}`);
+          
+          updateState({ tasks: (persistentState.tasks as AgentTask[]).map(t => t.id === task.id ? { ...t, status: 'completed' } : t) });
+          addLog(`${agent?.name} görevini tamamladı.`);
+        } catch (e) {
+          updateState({ tasks: (persistentState.tasks as AgentTask[]).map(t => t.id === task.id ? { ...t, status: 'failed' } : t) });
+          throw e;
         }
-
-        // Mark completed
-        setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'completed' } : t));
-      } catch (error) {
-        console.error(error);
-        setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'failed' } : t));
-        addLog(`Failed task: ${task.fileName}`);
-        setStatus('error');
-        return; 
       }
-    }
 
-    setStatus('completed');
-    addLog('All tasks completed successfully.');
-    addLog('Ready to deploy/preview.');
-    onOpenPreview();
+      updateState({ status: 'completed', activeAgent: null });
+      addLog('Proje başarıyla derlendi. Canlı önizleme hazır.');
+      onOpenPreview();
+    } catch (error) {
+      addLog(`KRİTİK HATA: ${error}`);
+      updateState({ status: 'error', activeAgent: null });
+    }
   };
 
   return (
-    <div className="flex flex-col h-full bg-editor-bg text-editor-fg">
-      {/* Header */}
-      <div className="p-4 border-b border-editor-border bg-editor-sidebar">
-        <div className="flex items-center gap-2 mb-2">
-            <Bot className="w-5 h-5 text-purple-400" />
-            <h2 className="font-bold text-sm">Autonomous Agent</h2>
-        </div>
-        <p className="text-xs text-editor-fgSecondary">
-          I can build entire applications from scratch. Just tell me what you want.
-        </p>
+    <div className="flex flex-col h-full bg-transparent text-brand-dark overflow-hidden">
+      {/* Human-Like Team Dashboard */}
+      <div className="p-4 flex justify-between gap-1 border-b border-glass-border bg-black/[0.02] dark:bg-white/[0.02]">
+        {TEAM_MEMBERS.map((member) => (
+          <div 
+            key={member.role}
+            className={`flex flex-col items-center gap-2 flex-1 p-2 rounded-2xl transition-all duration-700 border ${
+              activeAgent === member.role 
+                ? 'bg-brand-primary/10 border-brand-primary/30 shadow-sm scale-105' 
+                : 'border-transparent opacity-40 grayscale'
+            }`}
+          >
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[11px] font-bold border-2 ${
+              activeAgent === member.role ? 'bg-brand-primary text-white border-white animate-pulse' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500 border-zinc-300'
+            }`}>
+              {member.avatar}
+            </div>
+            <div className="text-center overflow-hidden">
+                <p className="text-[9px] font-bold truncate leading-none mb-0.5">{member.name.split(' ')[1]}</p>
+                <p className="text-[7px] opacity-60 truncate uppercase tracking-tighter">{member.role}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Input Area (only visible when idle or completed) */}
-      {(status === 'idle' || status === 'completed' || status === 'error') && (
-        <div className="p-4 border-b border-editor-border">
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="e.g., Build a functional calculator with a dark theme..."
-            className="w-full h-24 bg-editor-active border border-editor-border rounded p-3 text-sm focus:border-purple-500 focus:outline-none resize-none mb-3"
-          />
-          <div className="flex gap-2">
-            <button
-                onClick={startAgent}
-                disabled={!prompt.trim()}
-                className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 px-4 rounded text-sm font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-            >
-                <Play className="w-4 h-4" />
-                Start Agent
-            </button>
-            {status === 'completed' && (
+      {/* Input Area */}
+      {(status !== 'working') && (
+        <div className="p-5 space-y-4">
+          <div className="relative group">
+            <textarea
+              value={prompt}
+              onChange={(e) => updateState({ prompt: e.target.value })}
+              placeholder="Yeni bir özellik veya tüm bir uygulama tarif edin..."
+              className="w-full h-24 bg-black/5 dark:bg-white/5 border border-transparent focus:border-brand-primary/20 rounded-2xl p-4 text-[13px] text-brand-dark focus:outline-none resize-none smooth-transition"
+            />
+            <div className="absolute right-3 bottom-3 flex gap-2">
                  <button
-                 onClick={onOpenPreview}
-                 className="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 px-4 rounded text-sm font-medium flex items-center justify-center gap-2 transition-colors"
-             >
-                 <Play className="w-4 h-4" />
-                 Run Preview
-             </button>
-            )}
+                    onClick={startTeamBuild}
+                    disabled={!prompt.trim()}
+                    className="bg-brand-primary text-white p-2.5 rounded-xl shadow-lg shadow-brand-primary/20 hover:scale-105 active:scale-95 smooth-transition disabled:opacity-30"
+                >
+                    <Play className="w-4 h-4 fill-current" />
+                </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Execution View */}
-      {(status === 'planning' || status === 'executing') && (
-        <div className="p-4 border-b border-editor-border bg-purple-900/10">
-            <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-purple-300 animate-pulse">
-                    {status === 'planning' ? 'Designing Architecture...' : 'Building Application...'}
-                </span>
-                <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
+      {/* Elegant Terminal Output */}
+      <div className="flex-1 flex flex-col min-h-0 bg-[#0a0a0b] mx-4 mb-4 rounded-3xl border border-white/5 overflow-hidden shadow-2xl">
+        <div className="h-9 bg-white/5 border-b border-white/5 flex items-center px-4 justify-between">
+            <div className="flex items-center gap-2">
+                <TerminalIcon className="w-3.5 h-3.5 text-zinc-500" />
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Team Output</span>
             </div>
-            <div className="h-1 bg-editor-active rounded-full overflow-hidden">
-                <div 
-                    className="h-full bg-purple-500 transition-all duration-500"
-                    style={{ 
-                        width: tasks.length > 0 
-                            ? `${(tasks.filter(t => t.status === 'completed').length / tasks.length) * 100}%` 
-                            : '0%' 
-                    }}
-                />
+            <div className="flex gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500/20"></div>
+                <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/20"></div>
+                <div className="w-2.5 h-2.5 rounded-full bg-green-500/20"></div>
             </div>
         </div>
-      )}
-
-      {/* Task List & Logs */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Task List */}
-        {tasks.length > 0 && (
-            <div className="space-y-2">
-                <h3 className="text-xs font-semibold uppercase text-editor-fgSecondary tracking-wider">Plan</h3>
-                {tasks.map(task => (
-                    <div key={task.id} className="flex items-center gap-3 p-2 rounded bg-editor-active/50 text-xs border border-transparent hover:border-editor-border">
-                        {task.status === 'completed' ? (
-                            <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                        ) : task.status === 'in-progress' ? (
-                            <Loader2 className="w-4 h-4 text-purple-400 animate-spin flex-shrink-0" />
-                        ) : task.status === 'failed' ? (
-                            <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
-                        ) : (
-                            <div className="w-4 h-4 rounded-full border-2 border-editor-fgSecondary flex-shrink-0" />
-                        )}
-                        
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                                <span className={`uppercase font-bold text-[10px] px-1.5 py-0.5 rounded ${
-                                    task.type === 'create' ? 'bg-green-900/30 text-green-400' :
-                                    task.type === 'update' ? 'bg-blue-900/30 text-blue-400' :
-                                    'bg-red-900/30 text-red-400'
-                                }`}>
-                                    {task.type}
-                                </span>
-                                <span className="font-mono text-editor-fg truncate">{task.fileName}</span>
-                            </div>
-                            <p className="text-editor-fgSecondary truncate mt-0.5">{task.description}</p>
-                        </div>
+        
+        <div className="flex-1 overflow-y-auto p-4 font-mono text-[11px] leading-relaxed selection:bg-brand-primary selection:text-white">
+            {logs.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center opacity-20 italic">
+                    <Cpu className="w-8 h-8 mb-2" />
+                    <span>Takım komut bekliyor...</span>
+                </div>
+            ) : (
+                logs.map((log, i) => (
+                    <div key={i} className="mb-1.5 flex gap-3">
+                        <span className="text-zinc-600 flex-shrink-0">{log.substring(0, 10)}</span>
+                        <span className={`${log.includes('HATA') ? 'text-red-400' : 'text-zinc-300'}`}>{log.substring(11)}</span>
                     </div>
-                ))}
-            </div>
-        )}
-
-        {/* Terminal Logs */}
-        {logs.length > 0 && (
-            <div className="mt-4">
-                 <h3 className="text-xs font-semibold uppercase text-editor-fgSecondary tracking-wider mb-2">Agent Logs</h3>
-                 <div className="font-mono text-[10px] text-gray-400 bg-black/30 p-2 rounded space-y-1">
-                    {logs.map((log, i) => (
-                        <div key={i}>{log}</div>
-                    ))}
-                    <div ref={logsEndRef} />
-                 </div>
-            </div>
-        )}
+                ))
+            )}
+            {status === 'working' && (
+                <div className="flex items-center gap-2 text-brand-primary mt-2 animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-primary"></span>
+                    <span>İşleniyor...</span>
+                </div>
+            )}
+            <div ref={logsEndRef} />
+        </div>
       </div>
+
+      {/* Task Mini List */}
+      {tasks.length > 0 && (
+          <div className="px-5 pb-5">
+              <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-3 h-3 text-brand-secondary" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-brand-dark/40">Geliştirme Planı</span>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                  {tasks.map(task => (
+                      <div key={task.id} className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[10px] font-medium border flex items-center gap-2 ${
+                          task.status === 'completed' ? 'bg-green-500/10 border-green-500/20 text-green-600' :
+                          task.status === 'in-progress' ? 'bg-brand-primary/10 border-brand-primary/20 text-brand-primary' :
+                          'bg-zinc-100 dark:bg-zinc-800 border-transparent text-zinc-500'
+                      }`}>
+                          {task.status === 'completed' && <CheckCircle className="w-3 h-3" />}
+                          {task.status === 'in-progress' && <Loader2 className="w-3 h-3 animate-spin" />}
+                          {task.fileName}
+                      </div>
+                  ))}
+              </div>
+          </div>
+      )}
     </div>
   );
 };

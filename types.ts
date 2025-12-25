@@ -7,17 +7,35 @@ export interface CodeFile {
   isUnsaved?: boolean;
 }
 
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  updatedAt: number;
+  files: CodeFile[];
+}
+
+export interface User {
+  id: string;
+  email: string;
+  displayName: string;
+  avatar?: string;
+}
+
 export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
   timestamp: number;
 }
 
+export type Language = 'en' | 'tr';
+
 export interface EditorSettings {
   theme: 'dark' | 'light';
   fontSize: number;
   wordWrap: boolean;
   minimap: boolean;
+  language: Language;
 }
 
 export enum SupportedLanguage {
@@ -47,9 +65,35 @@ export const LANGUAGE_EXTENSIONS: Record<string, string> = {
 };
 
 export type AIActionType = 'explain' | 'fix' | 'comments' | 'refactor';
+export type ViewMode = 'explorer' | 'search' | 'extensions' | 'projects';
 
-// --- View Modes for Activity Bar ---
-export type ViewMode = 'explorer' | 'search' | 'extensions' | 'settings';
+// --- Team Agent Types ---
+export type AgentRole = 'planner' | 'designer' | 'frontend' | 'backend' | 'lead';
+export type AgentStatus = 'idle' | 'working' | 'completed' | 'error';
+
+export interface AgentMember {
+  role: AgentRole;
+  name: string;
+  title: string;
+  avatar: string;
+  description: string;
+  status: AgentStatus;
+}
+
+export interface AgentTask {
+  id: string;
+  assignedTo: AgentRole;
+  type: 'create' | 'update' | 'delete';
+  fileName: string;
+  description: string;
+  status: 'pending' | 'in-progress' | 'completed' | 'failed';
+}
+
+export interface PlanStep {
+  id: string;
+  description: string;
+  status: 'pending' | 'generating' | 'completed';
+}
 
 export interface Extension {
   id: string;
@@ -58,33 +102,6 @@ export interface Extension {
   author: string;
   icon: string;
   installed: boolean;
-}
-
-// --- Agent Types ---
-
-export type AgentStatus = 'idle' | 'planning' | 'executing' | 'completed' | 'error';
-
-export type FileOperationType = 'create' | 'update' | 'delete';
-
-export interface AgentTask {
-  id: string;
-  description: string;
-  type: FileOperationType;
-  fileName: string;
-  status: 'pending' | 'in-progress' | 'completed' | 'failed';
-}
-
-export interface AgentPlan {
-  goal: string;
-  tasks: AgentTask[];
-}
-
-// --- Planner Types ---
-
-export interface PlanStep {
-  id: string;
-  description: string;
-  status: 'pending' | 'generating' | 'completed';
 }
 
 export interface Plan {
