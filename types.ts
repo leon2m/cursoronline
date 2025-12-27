@@ -7,12 +7,27 @@ export interface CodeFile {
   isUnsaved?: boolean;
 }
 
+export type ApplicationType = 'web' | 'mobile' | 'game' | 'system' | 'ai_model' | 'script' | 'desktop' | 'fullstack';
+export type PlatformType = 'browser' | 'ios' | 'android' | 'cross_platform' | 'linux' | 'windows' | 'embedded' | 'macos' | 'cloud_function';
+
+export interface ProjectConfig {
+  type: ApplicationType;
+  platform: PlatformType;
+  languages: string[]; 
+  frameworks: string[];
+  tools: string[]; // Added for Docker, Expo, etc.
+  isAiRecommended: boolean;
+  architecture: 'monolith' | 'microservices' | 'serverless' | 'mvc' | 'modular';
+  buildTarget: 'debug' | 'release' | 'production' | 'wasm';
+}
+
 export interface Project {
   id: string;
   name: string;
   description: string;
   updatedAt: number;
   files: CodeFile[];
+  config?: ProjectConfig;
 }
 
 export interface User {
@@ -48,26 +63,49 @@ export enum SupportedLanguage {
   JAVA = 'java',
   MARKDOWN = 'markdown',
   SQL = 'sql',
-  TEXT = 'plaintext'
+  TEXT = 'plaintext',
+  CPP = 'cpp',
+  CSHARP = 'csharp',
+  LUA = 'lua',
+  GO = 'go',
+  RUST = 'rust',
+  PHP = 'php',
+  RUBY = 'ruby',
+  SWIFT = 'swift',
+  KOTLIN = 'kotlin',
+  DART = 'dart',
+  XML = 'xml',
+  YAML = 'yaml'
 }
 
-export const LANGUAGE_EXTENSIONS: Record<string, string> = {
-  javascript: '.js',
-  typescript: '.ts',
-  html: '.html',
-  css: '.css',
-  json: '.json',
-  python: '.py',
-  java: '.java',
-  markdown: '.md',
-  sql: '.sql',
-  plaintext: '.txt'
+export const EXTENSION_TO_LANGUAGE: Record<string, string> = {
+  '.js': 'javascript',
+  '.jsx': 'javascript',
+  '.ts': 'typescript',
+  '.tsx': 'typescript',
+  '.html': 'html',
+  '.css': 'css',
+  '.py': 'python',
+  '.java': 'java',
+  '.cpp': 'cpp',
+  '.h': 'cpp',
+  '.cs': 'csharp',
+  '.lua': 'lua',
+  '.go': 'go',
+  '.rs': 'rust',
+  '.swift': 'swift',
+  '.kt': 'kotlin',
+  '.dart': 'dart',
+  '.json': 'json',
+  '.md': 'markdown',
+  '.yml': 'yaml',
+  '.yaml': 'yaml',
+  '.dockerfile': 'dockerfile'
 };
 
 export type AIActionType = 'explain' | 'fix' | 'comments' | 'refactor';
 export type ViewMode = 'explorer' | 'search' | 'extensions' | 'projects';
 
-// --- Team Agent Types ---
 export type AgentRole = 'planner' | 'designer' | 'frontend' | 'backend' | 'lead';
 export type AgentStatus = 'idle' | 'working' | 'completed' | 'error';
 
@@ -95,6 +133,12 @@ export interface PlanStep {
   status: 'pending' | 'generating' | 'completed';
 }
 
+export interface Plan {
+  id: string;
+  goal: string;
+  steps: PlanStep[];
+}
+
 export interface Extension {
   id: string;
   name: string;
@@ -102,10 +146,4 @@ export interface Extension {
   author: string;
   icon: string;
   installed: boolean;
-}
-
-export interface Plan {
-  id: string;
-  goal: string;
-  steps: PlanStep[];
 }

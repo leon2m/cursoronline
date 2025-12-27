@@ -1,6 +1,6 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -54,87 +54,27 @@
                 primary: '#2EA446', 
                 secondary: '#AFD244',
                 dark: '#050505',
+                surface: '#0a0a0b',
                 accent: '#3b82f6'
               },
             },
             backgroundImage: {
               'premium-gradient': 'linear-gradient(135deg, #2EA446 0%, #AFD244 100%)',
-              'opus-gradient': 'linear-gradient(135deg, #7C3AED 0%, #DB2777 100%)',
             },
             animation: {
                 'float': 'float 6s ease-in-out infinite',
-                'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                'spin-slow': 'spin 12s linear infinite',
-                'cursor-blink': 'cursorBlink 1s step-end infinite',
             },
             keyframes: {
                 float: {
                     '0%, 100%': { transform: 'translateY(0)' },
                     '50%': { transform: 'translateY(-20px)' },
-                },
-                cursorBlink: {
-                  '0%, 100%': { opacity: '1' },
-                  '50%': { opacity: '0' },
                 }
             }
           }
         }
       }
     </script>
-    <style>
-      :root {
-        --bg-app: #FFFFFF;
-        --brand-primary: #2EA446;
-      }
-
-      .dark-mode {
-        --bg-app: #0a0a0a;
-      }
-
-      body {
-        font-family: 'Inter', sans-serif;
-        background-color: var(--bg-app);
-        margin: 0;
-        -webkit-font-smoothing: antialiased;
-        overflow-x: hidden;
-      }
-
-      .perspective-container {
-        perspective: 1200px;
-        transform-style: preserve-3d;
-      }
-      
-      .transform-style-3d {
-        transform-style: preserve-3d;
-      }
-
-      /* CRT Terminal Effect */
-      .crt-screen {
-        background-color: #0c0c0c;
-        background-image: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-        background-size: 100% 2px, 3px 100%;
-        box-shadow: inset 0 0 20px rgba(0,0,0,1);
-      }
-      
-      .crt-text {
-        text-shadow: 0 0 5px rgba(46, 164, 70, 0.5);
-      }
-
-      /* Custom Scrollbar */
-      ::-webkit-scrollbar { width: 6px; }
-      ::-webkit-scrollbar-track { background: #000; }
-      ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-      ::-webkit-scrollbar-thumb:hover { background: #2EA446; }
-
-      .apple-modal-enter {
-        animation: apple-slide-up 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-      }
-      @keyframes apple-slide-up {
-        from { opacity: 0; transform: translateY(20px) scale(0.98); }
-        to { opacity: 1; transform: translateY(0) scale(1); }
-      }
-    </style>
-  <script type="importmap">
+    <script type="importmap">
 {
   "imports": {
     "react-markdown": "https://aistudiocdn.com/react-markdown@^10.1.0",
@@ -143,12 +83,13 @@
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
-    "@monaco-editor/react": "https://aistudiocdn.com/@monaco-editor/react@^4.7.0"
+    "@monaco-editor/react": "https://aistudiocdn.com/@monaco-editor/react@^4.7.0",
+    "jszip": "https://aistudiocdn.com/jszip@^3.10.1"
   }
 }
 </script>
 </head>
-  <body>
+  <body class="bg-[#050505] text-white overflow-hidden">
     <div id="root"></div>
   </body>
 </html>
