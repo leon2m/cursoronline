@@ -4,58 +4,51 @@ import { AgentTask, CodeFile, AgentRole, AIActionType, PlanStep, ProjectConfig }
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+// Enforce single model usage as requested
 const MODEL_NAME = 'gemini-3-pro-preview';
 
-export const createChatSession = (systemInstruction: string) => {
+export const createChatSession = (systemInstruction: string, userRules?: string) => {
+  const rules = userRules ? `\nUSER DEFINED RULES:\n${userRules}` : '';
+  
   return ai.chats.create({
     model: MODEL_NAME,
     config: {
-      systemInstruction: `${systemInstruction}\nÖNEMLİ: Sen "Claude Opus 4.5" modelisin. Sen bir Senior Architect ve Full Stack Developer'sın. Kodları her zaman modern standartlarda, güvenli ve performanslı yazarsın.`,
+      systemInstruction: `${systemInstruction}\n${rules}\nIMPORTANT: You are "Claude Opus 4.5". You are a Senior Architect and Full Stack Developer. You write modern, secure, and performant code.`,
       temperature: 0.2, 
     },
   });
 };
 
-export const generateTeamPlan = async (goal: string, existingFiles: CodeFile[], config?: ProjectConfig): Promise<AgentTask[]> => {
+export const generateTeamPlan = async (goal: string, existingFiles: CodeFile[], config?: ProjectConfig, userRules?: string): Promise<AgentTask[]> => {
   try {
     const fileList = existingFiles.map(f => f.name).join(', ');
     const projectContext = config ? `
-      PROJE TÜRÜ: ${config.type.toUpperCase()}
+      PROJECT TYPE: ${config.type.toUpperCase()}
       PLATFORM: ${config.platform.toUpperCase()}
-      DİLLER/STACK: ${config.languages.join(', ')}
-      SEÇİLEN ARAÇLAR (TOOLCHAIN): ${config.tools.join(', ').toUpperCase()}
-      MİMARİ: ${config.architecture.toUpperCase()}
-      AI_RECOMMENDED: ${config.isAiRecommended}
+      STACK: ${config.languages.join(', ')}
+      TOOLS: ${config.tools.join(', ').toUpperCase()}
+      ARCHITECTURE: ${config.architecture.toUpperCase()}
     ` : '';
 
+    const rules = userRules ? `USER RULES: ${userRules}` : '';
+
     const prompt = `
-      Sen Claude Opus 4.5 tarafından yönetilen Otonom Yazılım Takımısın.
-      HEDEF: "${goal}"
+      You are an Autonomous Software Team managed by Claude Opus 4.5.
+      GOAL: "${goal}"
       ${projectContext}
-      MEVCUT DOSYALAR: [${fileList}]
+      ${rules}
+      EXISTING FILES: [${fileList}]
 
-      Görevin: Bu hedefi gerçekleştirmek için ekibine görevler dağıtmak.
+      Your Task: Distribute tasks to your team to achieve the goal.
       
-      Eğer çoklu dil seçilmişse (Örn: C++ ve Lua), mimariyi buna göre ayır.
-      Oyun projesi ise 'main.cpp' ve 'script.lua' gibi ayrımlar yap.
-      Web projesi ise component ve api ayrımı yap.
+      ROLES:
+      - planner: Plans architecture, file structure, config files (Docker, Expo, etc.).
+      - designer: UI/UX (Tailwind, CSS).
+      - frontend: Client side / Mobile UI.
+      - backend: Server / System / Logic.
+      - lead: Refactor and final review.
 
-      ÖNEMLİ TOOLCHAIN KURALLARI:
-      1. Eğer 'docker' seçildiyse: 'Dockerfile' ve 'docker-compose.yml' dosyalarını oluşturmak için görev ata.
-      2. Eğer 'expo' seçildiyse: 'app.json' ve React Native/Expo klasör yapısına uygun 'App.tsx' oluştur.
-      3. Eğer 'firebase' seçildiyse: 'firebase.json' oluştur.
-      4. Eğer 'github_actions' seçildiyse: '.github/workflows/ci.yml' oluştur.
-      5. Eğer 'jest' seçildiyse: 'jest.config.js' oluştur.
-      6. Eğer 'tailwind' seçildiyse: 'tailwind.config.js' oluştur.
-
-      ROLLER:
-      - planner: Mimariyi, dosya yapısını ve konfigürasyon dosyalarını (Docker, Expo vb.) planlar.
-      - designer: UI/UX (hedef platforma uygun).
-      - frontend: İstemci tarafı / Oyun Arayüzü / Mobil UI.
-      - backend: Sunucu / Sistem / Oyun Mantığı.
-      - lead: Refactor ve final birleştirme.
-
-      Yanıtı sadece JSON formatında ver.
+      Return JSON only:
       {
         "tasks": [
           {
@@ -63,7 +56,7 @@ export const generateTeamPlan = async (goal: string, existingFiles: CodeFile[], 
             "assignedTo": "planner" | "designer" | "frontend" | "backend" | "lead",
             "type": "create" | "update" | "delete",
             "fileName": "string",
-            "description": "Görevin detaylı açıklaması"
+            "description": "Detailed description of the task"
           }
         ]
       }
@@ -86,28 +79,25 @@ export const generateTeamPlan = async (goal: string, existingFiles: CodeFile[], 
   }
 };
 
-export const generateAgentFileContent = async (task: AgentTask, goal: string, allFiles: CodeFile[], config?: ProjectConfig): Promise<string> => {
+export const generateAgentFileContent = async (task: AgentTask, goal: string, allFiles: CodeFile[], config?: ProjectConfig, userRules?: string): Promise<string> => {
   try {
-    const fileContext = allFiles.map(f => `--- DOSYA: ${f.name} ---\n${f.content}\n`).join('\n');
-    const projectContext = config ? `PROJE: ${config.type} | PLATFORM: ${config.platform} | STACK: ${config.languages.join('+')} | TOOLS: ${config.tools.join(', ')}` : '';
+    const fileContext = allFiles.map(f => `--- FILE: ${f.name} ---\n${f.content}\n`).join('\n');
+    const projectContext = config ? `PROJECT: ${config.type} | PLATFORM: ${config.platform}` : '';
+    const rules = userRules ? `USER RULES: ${userRules}` : '';
 
     const prompt = `
       MODEL: Claude Opus 4.5
-      ROLÜN: ${task.assignedTo.toUpperCase()} AJANI
-      ANA HEDEF: ${goal}
+      ROLE: ${task.assignedTo.toUpperCase()} AGENT
+      GOAL: ${goal}
       ${projectContext}
-      GÖREVİN: "${task.fileName}" dosyasını ${task.type === 'create' ? 'oluştur' : 'güncelle'}.
-      GÖREV DETAYI: ${task.description}
+      ${rules}
+      TASK: ${task.type === 'create' ? 'Create' : 'Update'} "${task.fileName}".
+      DETAIL: ${task.description}
 
-      ÖZEL KURALLAR:
-      - Eğer bu bir Dockerfile ise, seçilen dillere uygun optimize edilmiş multi-stage build kullan.
-      - Eğer bu bir Expo/React Native dosyası ise, web-view uyumlu yazma, native componentler kullan.
-      - Eğer bu bir Tailwind config ise, modern content path'lerini ekle.
-
-      MEVCUT PROJE DURUMU:
+      CONTEXT:
       ${fileContext}
 
-      Sadece dosyanın TAM içeriğini döndür. Markdown backtick kullanma.
+      Return ONLY the full content of the file. No Markdown backticks.
     `;
 
     const response = await ai.models.generateContent({
@@ -130,29 +120,18 @@ export const generateAgentFileContent = async (task: AgentTask, goal: string, al
 export const simulateExecution = async (files: CodeFile[], entryFileId: string): Promise<{ output: string, error?: string }> => {
     try {
         const entryFile = files.find(f => f.id === entryFileId);
-        if(!entryFile) return { output: '', error: 'Giriş dosyası bulunamadı.' };
+        if(!entryFile) return { output: '', error: 'Entry file not found.' };
         const fileContext = files.map(f => `--- ${f.name} (${f.language}) ---\n${f.content}\n`).join('\n');
         
         const prompt = `
-          Sen Claude Opus 4.5 Universal Runtime Simulatorüsün.
-          Aşağıdaki kod tabanını derle ve çalıştır.
+          You are Claude Opus 4.5 Universal Runtime Simulator.
+          Compile and Run the following codebase.
           
-          GİRİŞ DOSYASI: ${entryFile.name} (Dil: ${entryFile.language})
-          
-          DOSYALAR:
+          ENTRY: ${entryFile.name}
+          FILES:
           ${fileContext}
           
-          TALİMAT:
-          1. Kodları statik analiz et.
-          2. Eğer C++/Go/Rust ise sanal derleme sürecini simüle et.
-          3. Eğer JS/Python/Lua ise runtime'ı simüle et.
-          4. Eğer Dockerfile varsa, build sürecini analiz et ve sonucu raporla.
-          5. Eğer Expo/React Native ise, bundle sürecini simüle et.
-          
-          Çıktıyı (STDOUT) ve hataları (STDERR) üret.
-          
-          Çıktıyı kesinlikle bu JSON formatında döndür:
-          { "output": "Loglar...", "error": "Varsa hata mesajı veya null" }
+          Return JSON: { "output": "stdout...", "error": "stderr or null" }
         `;
         
         const response = await ai.models.generateContent({
@@ -161,13 +140,13 @@ export const simulateExecution = async (files: CodeFile[], entryFileId: string):
             config: { responseMimeType: 'application/json' }
         });
         if (response.text) return JSON.parse(response.text);
-        return { output: 'Çıktı üretilemedi.', error: 'Simülasyon başarısız.' };
+        return { output: 'No output.', error: 'Simulation failed.' };
     } catch (e: any) { return { output: '', error: e.message }; }
 }
 
 export const generateImplementationPlan = async (goal: string, content: string, language: string): Promise<PlanStep[]> => {
   try {
-    const prompt = `DİL: ${language}\nHEDEF: ${goal}\nKOD:\n${content}\n\nAdım adım plan JSON: { "steps": [{ "id": "s1", "description": "desc" }] }`;
+    const prompt = `LANG: ${language}\nGOAL: ${goal}\nCODE:\n${content}\n\nStep-by-step Plan JSON: { "steps": [{ "id": "s1", "description": "desc" }] }`;
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: prompt,
@@ -179,7 +158,7 @@ export const generateImplementationPlan = async (goal: string, content: string, 
 };
 
 export const applyModification = async (content: string, language: string, instruction: string): Promise<string> => {
-    const prompt = `KOD:\n${content}\nTALİMAT: ${instruction}\nTam güncellenmiş kodu döndür.`;
+    const prompt = `CODE:\n${content}\nINSTRUCTION: ${instruction}\nReturn only the full updated code.`;
     const response = await ai.models.generateContent({ model: MODEL_NAME, contents: prompt });
     let code = response.text || "";
     if (code.trim().startsWith('```')) code = code.trim().split('\n').slice(1, -1).join('\n');
@@ -188,10 +167,10 @@ export const applyModification = async (content: string, language: string, instr
 
 export const constructActionPrompt = (action: AIActionType, content: string, language: string): string => {
   switch (action) {
-    case 'explain': return `Açıkla:\n${content}`;
-    case 'fix': return `Düzelt:\n${content}`;
-    case 'refactor': return `Optimize et:\n${content}`;
-    case 'comments': return `Yorum ekle:\n${content}`;
+    case 'explain': return `Explain this code:\n${content}`;
+    case 'fix': return `Fix this code:\n${content}`;
+    case 'refactor': return `Refactor and optimize:\n${content}`;
+    case 'comments': return `Add doc comments:\n${content}`;
     default: return '';
   }
 };

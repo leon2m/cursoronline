@@ -2,6 +2,7 @@
 export interface CodeFile {
   id: string;
   name: string;
+  path: string; // e.g., "src/components/Button.tsx"
   language: string;
   content: string;
   isUnsaved?: boolean;
@@ -15,7 +16,7 @@ export interface ProjectConfig {
   platform: PlatformType;
   languages: string[]; 
   frameworks: string[];
-  tools: string[]; // Added for Docker, Expo, etc.
+  tools: string[];
   isAiRecommended: boolean;
   architecture: 'monolith' | 'microservices' | 'serverless' | 'mvc' | 'modular';
   buildTarget: 'debug' | 'release' | 'production' | 'wasm';
@@ -37,20 +38,50 @@ export interface User {
   avatar?: string;
 }
 
+export interface AgentRunData {
+    status: AgentStatus;
+    tasks: AgentTask[];
+    logs: string[];
+    activeAgent: AgentRole | null;
+}
+
 export interface ChatMessage {
+  id: string;
   role: 'user' | 'model';
   text: string;
   timestamp: number;
+  // If this message represents an Agent working
+  type?: 'text' | 'agent_run';
+  runData?: AgentRunData;
+}
+
+export interface ChatSession {
+    id: string;
+    title: string;
+    updatedAt: number;
+    messages: ChatMessage[];
 }
 
 export type Language = 'en' | 'tr';
 
+export type ThemeType = 'cursor-dark' | 'cursor-light' | 'vercel-dark' | 'dracula' | 'monokai' | 'nord';
+
+export interface MCPServer {
+    id: string;
+    name: string;
+    url: string;
+    status: 'connected' | 'disconnected' | 'error';
+    type: 'stdio' | 'websocket';
+}
+
 export interface EditorSettings {
-  theme: 'dark' | 'light';
+  theme: ThemeType;
   fontSize: number;
   wordWrap: boolean;
   minimap: boolean;
   language: Language;
+  rules?: string; 
+  mcpServers: MCPServer[];
 }
 
 export enum SupportedLanguage {
@@ -142,8 +173,12 @@ export interface Plan {
 export interface Extension {
   id: string;
   name: string;
+  displayName: string;
   description: string;
   author: string;
-  icon: string;
+  version: string;
+  downloads: string;
+  icon: string; // URL or Lucide Icon name
   installed: boolean;
+  category: 'Language' | 'Linter' | 'Theme' | 'Snippets' | 'Other';
 }

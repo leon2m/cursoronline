@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import Editor, { OnMount } from "@monaco-editor/react";
 import { EditorSettings } from '../types';
@@ -22,71 +23,112 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     editorRef.current = editor;
     monacoRef.current = monaco;
 
-    // --- PREMIUM DARK THEME ---
-    // High contrast, deep blacks, neon accents
+    // --- 1. CURSOR DARK ---
     monaco.editor.defineTheme('cursor-dark', {
       base: 'vs-dark',
       inherit: true,
-      rules: [
-          { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },
-          { token: 'keyword', foreground: '2EA446', fontStyle: 'bold' }, // Brand Primary
-          { token: 'identifier', foreground: 'E2E2E2' },
-          { token: 'type', foreground: 'AFD244' }, // Brand Secondary (Lime)
-          { token: 'string', foreground: 'D9F99D' }, // Brighter Lime for text
-          { token: 'number', foreground: '7dd3fc' }, // Light Blue
-          { token: 'delimiter', foreground: '86868b' },
-      ],
+      rules: [],
       colors: {
-        'editor.background': '#121212F2', // Very Dark Gray with slight transparency (95% opacity)
-        'editor.foreground': '#e2e2e2',
-        'editorLineNumber.foreground': '#52525b',
-        'editorLineNumber.activeForeground': '#2EA446',
-        'editor.lineHighlightBackground': '#ffffff08',
-        'editorCursor.foreground': '#2EA446',
-        'editor.selectionBackground': '#2EA44633',
-        'editorWidget.background': '#18181b',
-        'editorWidget.border': '#27272a',
-        'editorIndentGuide.background': '#27272a',
-        'editorIndentGuide.activeBackground': '#3f3f46'
+        'editor.background': '#1e1e1e',
+        'editor.foreground': '#d4d4d4',
+        'editorLineNumber.foreground': '#858585',
+        'editorCursor.foreground': '#3794FF',
+        'editor.selectionBackground': '#3794FF33',
+        'editorWidget.background': '#252526',
+        'editorWidget.border': '#454545',
       },
     });
 
-    // --- PREMIUM LIGHT THEME ---
-    // Sharp contrast, off-white background, dark readable text
+    // --- 2. CURSOR LIGHT ---
     monaco.editor.defineTheme('cursor-light', {
       base: 'vs',
       inherit: true,
-      rules: [
-          { token: 'comment', foreground: '5c7335', fontStyle: 'italic' }, // Darker olive green
-          { token: 'keyword', foreground: '1a752e', fontStyle: 'bold' }, // Darker Brand Green for contrast
-          { token: 'identifier', foreground: '111827' }, // Almost black
-          { token: 'type', foreground: '0369a1' }, // Blue-ish for types
-          { token: 'string', foreground: '5a6e13' }, // Dark Lime/Olive for readability
-          { token: 'number', foreground: '0891b2' },
-          { token: 'delimiter', foreground: '6b7280' },
-      ],
+      rules: [],
       colors: {
-        'editor.background': '#ffffffF2', // White with slight transparency (95% opacity)
-        'editor.foreground': '#111827',
-        'editorLineNumber.foreground': '#9ca3af',
-        'editorLineNumber.activeForeground': '#1a752e',
-        'editor.lineHighlightBackground': '#00000008',
-        'editorCursor.foreground': '#1a752e',
-        'editor.selectionBackground': '#2EA44626',
-        'editorWidget.background': '#ffffff',
-        'editorWidget.border': '#e5e7eb',
-        'editorIndentGuide.background': '#e5e7eb',
-        'editorIndentGuide.activeBackground': '#d1d5db'
+        'editor.background': '#ffffff',
+        'editor.foreground': '#000000',
+        'editorCursor.foreground': '#3794FF',
+        'editor.selectionBackground': '#3794FF33',
       },
     });
 
-    monaco.editor.setTheme(settings.theme === 'dark' ? 'cursor-dark' : 'cursor-light');
+    // --- 3. VERCEL DARK ---
+    monaco.editor.defineTheme('vercel-dark', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [],
+      colors: {
+        'editor.background': '#000000',
+        'editor.foreground': '#ffffff',
+        'editorLineNumber.foreground': '#333333',
+        'editorCursor.foreground': '#ffffff',
+        'editor.selectionBackground': '#333333',
+      },
+    });
+
+    // --- 4. DRACULA ---
+    monaco.editor.defineTheme('dracula', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+          { token: 'comment', foreground: '6272a4' },
+          { token: 'keyword', foreground: 'ff79c6' },
+          { token: 'string', foreground: 'f1fa8c' },
+          { token: 'number', foreground: 'bd93f9' },
+          { token: 'type', foreground: '8be9fd' },
+      ],
+      colors: {
+        'editor.background': '#282a36',
+        'editor.foreground': '#f8f8f2',
+        'editorLineNumber.foreground': '#6272a4',
+        'editorCursor.foreground': '#f8f8f2',
+        'editor.selectionBackground': '#44475a',
+      },
+    });
+
+    // --- 5. MONOKAI ---
+    monaco.editor.defineTheme('monokai', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+          { token: 'comment', foreground: '75715e' },
+          { token: 'keyword', foreground: 'f92672' },
+          { token: 'string', foreground: 'e6db74' },
+          { token: 'number', foreground: 'ae81ff' },
+      ],
+      colors: {
+        'editor.background': '#272822',
+        'editor.foreground': '#f8f8f2',
+        'editorLineNumber.foreground': '#90908a',
+        'editorCursor.foreground': '#f8f8f0',
+        'editor.selectionBackground': '#49483e',
+      },
+    });
+
+    // --- 6. NORD ---
+    monaco.editor.defineTheme('nord', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+          { token: 'comment', foreground: '616e88' },
+          { token: 'keyword', foreground: '81a1c1' },
+          { token: 'string', foreground: 'a3be8c' },
+      ],
+      colors: {
+        'editor.background': '#2e3440',
+        'editor.foreground': '#d8dee9',
+        'editorLineNumber.foreground': '#4c566a',
+        'editorCursor.foreground': '#d8dee9',
+        'editor.selectionBackground': '#434c5e',
+      },
+    });
+
+    monaco.editor.setTheme(settings.theme);
   };
 
-  // Update theme when settings change
   useEffect(() => {
     if (monacoRef.current) {
-      monacoRef.current.editor.setTheme(settings.theme === 'dark' ? 'cursor-dark' : 'cursor-light');
+      monacoRef.current.editor.setTheme(settings.theme);
     }
   }, [settings.theme]);
 
@@ -116,7 +158,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           scrollbar: {
             verticalScrollbarSize: 10,
             horizontalScrollbarSize: 10,
-            useShadows: false, // Cleaner look without shadow
+            useShadows: false, 
           }
         }}
       />

@@ -1,52 +1,54 @@
 
 # Cursor Premium - Design Principles & UI System
 
-This document serves as the source of truth for all UI/UX decisions. The application enforces a **Strict Dark Mode** with Glassmorphism elements. Light mode is strictly prohibited to maintain the "Premium/Cyberpunk" aesthetic.
+This document serves as the source of truth for the application's UI/UX. The design strictly mimics the **Cursor / VS Code** environment: professional, minimalist, and developer-focused.
 
 ## 1. Core Color Palette
 
 *   **Backgrounds:**
-    *   `Global`: `#050505` (Deepest Black)
-    *   `Surface (L1)`: `#0a0a0b` (Sidebar, Panels)
-    *   `Surface (L2)`: `#121212` (Headers, Cards)
-    *   `Glass`: `rgba(0, 0, 0, 0.4)` with `backdrop-filter: blur(20px)`
+    *   `Global`: `#09090b` (Cursor Dark)
+    *   `Sidebar/ActivityBar`: `#000000` or `#18181b`
+    *   `Editor`: `#1e1e1e` (VS Code Default Dark)
+    *   `Panel`: `#09090b`
+    *   `Input`: `#27272a`
 
-*   **Brand Colors:**
-    *   `Primary`: `#2EA446` (Neon Green) - Used for primary actions, active states, and success indicators.
-    *   `Secondary`: `#AFD244` (Lime) - Used for gradients and accents.
-    *   `Destructive`: `#EF4444` (Red) - Delete, Error, Stop.
+*   **Brand/Accents:**
+    *   `Primary`: `#3794FF` (Cursor Blue) - Used for focus states, primary buttons, and selection.
+    *   `Secondary`: `#A855F7` (AI Purple) - Used specifically for AI related features.
+    *   `Success`: `#22c55e`
+    *   `Error`: `#ef4444`
+    *   `Warning`: `#eab308`
 
 *   **Typography Colors:**
-    *   `Headings`: `#FFFFFF` (100% White)
+    *   `Headings`: `#E4E4E7` (Zinc-200)
     *   `Body`: `#A1A1AA` (Zinc-400)
     *   `Muted`: `#52525B` (Zinc-600)
+    *   `Active Item`: `#FFFFFF`
 
 ## 2. Component Styling Rules
 
 ### Buttons
-*   **Primary:** `bg-brand-primary text-white rounded-full font-bold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all`
-*   **Ghost/Icon:** `p-2 rounded-xl text-gray-500 hover:text-white hover:bg-white/5 transition-all`
-*   **Bordered:** `border border-white/10 bg-white/5 hover:border-brand-primary/50 text-white`
+*   **Primary:** `bg-brand-primary text-white rounded-[4px] px-4 py-1.5 text-xs font-medium hover:bg-brand-primary/90`
+*   **Icon:** `p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/10`
+*   **Secondary:** `bg-[#27272a] text-white rounded-[4px] px-3 py-1.5 text-xs hover:bg-[#3f3f46]`
 
-### Inputs & Forms
-*   **Background:** `bg-black/20` or `bg-[#0f0f0f]`
-*   **Border:** `border border-white/10` (Focus: `border-brand-primary/50`)
-*   **Text:** `text-sm text-white placeholder:text-white/20`
-*   **Radius:** `rounded-xl` or `rounded-2xl`
+### File Explorer
+*   **Tree Structure:** Indentation is key. 
+*   **Folders:** Chevron icon + Name.
+*   **Files:** File Icon + Name.
+*   **Active File:** `bg-[#3794FF]/20 text-white` (Subtle blue tint).
+*   **Hover:** `hover:bg-[#2a2d2e]`
 
-### Modals & Panels
-*   **Background:** `bg-[#0c0c0c]` or `bg-black/90` with blur.
-*   **Borders:** `border border-white/5`
-*   **Shadows:** `shadow-2xl shadow-black/50`
+### AI Interface
+*   **Chat Bubbles:** clean, flat backgrounds (`#27272a` for user, transparent for AI).
+*   **Input:** "Composer" style. Floating or fixed at bottom, borderless feel with distinct active border.
 
-### Sidebar & Navigation
-*   **Active Item:** `bg-brand-primary/10 text-brand-primary border-l-2 border-brand-primary` (or solid brand color for icons).
-*   **Inactive Item:** `text-gray-500 hover:text-white hover:bg-white/5`
+### Extensions
+*   **Card:** `flex row`, Icon on left, Title/Desc on right. "Install" button is small, blue, on the right.
 
 ## 3. Typography
 *   **Font Family:** 'Inter' (UI), 'JetBrains Mono' (Code).
-*   **Sizing:** Keep UI text small (`text-xs` or `text-[10px]`) but uppercase and bold (`font-black tracking-widest`) for labels.
-
-## 4. Animation (Smooth Transition)
-*   **Global:** `transition-all duration-300 ease-in-out`
-*   **Hover:** subtle scaling or opacity changes. Do not use jarring color shifts.
+*   **Sizing:** 
+    *   Sidebar: `text-[13px]`
+    *   Tabs: `text-[12px]`
+    *   Headers: `text-[11px] uppercase font-bold tracking-wider`

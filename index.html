@@ -1,16 +1,52 @@
 
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en" class="cursor-dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cursor Premium | Powered by Claude Opus 4.5</title>
     
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%232EA446%22/><path d=%22M35 30 L65 50 L35 70%22 fill=%22none%22 stroke=%22white%22 stroke-width=%228%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%233794FF%22/><path d=%22M35 30 L65 50 L35 70%22 fill=%22none%22 stroke=%22white%22 stroke-width=%228%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>" />
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     
+    <style>
+      /* THEME DEFINITIONS */
+      :root {
+        --color-primary: #3794FF;
+      }
+
+      /* 1. Cursor Dark (Default) */
+      html.cursor-dark body { --bg-main: #09090b; --bg-sec: #18181b; --border: #27272a; --fg: #e4e4e7; }
+      
+      /* 2. Cursor Light */
+      html.cursor-light body { --bg-main: #ffffff; --bg-sec: #f4f4f5; --border: #e4e4e7; --fg: #18181b; }
+      
+      /* 3. Vercel Dark */
+      html.vercel-dark body { --bg-main: #000000; --bg-sec: #111111; --border: #333333; --fg: #ffffff; }
+      
+      /* 4. Dracula */
+      html.dracula body { --bg-main: #282a36; --bg-sec: #44475a; --border: #6272a4; --fg: #f8f8f2; }
+      
+      /* 5. Monokai */
+      html.monokai body { --bg-main: #272822; --bg-sec: #3e3d32; --border: #75715e; --fg: #f8f8f2; }
+      
+      /* 6. Nord */
+      html.nord body { --bg-main: #2e3440; --bg-sec: #3b4252; --border: #4c566a; --fg: #d8dee9; }
+
+      body {
+        background-color: var(--bg-main);
+        color: var(--fg);
+        transition: background-color 0.3s, color 0.3s;
+      }
+      
+      .theme-bg-main { background-color: var(--bg-main); }
+      .theme-bg-sec { background-color: var(--bg-sec); }
+      .theme-border { border-color: var(--border); }
+      .theme-text { color: var(--fg); }
+    </style>
+
     <script>
       (function() {
         var IGNORED_MSGS = ['Access to storage', 'QuotaExceeded', 'SecurityError'];
@@ -51,15 +87,11 @@
             },
             colors: {
               brand: {
-                primary: '#2EA446', 
-                secondary: '#AFD244',
-                dark: '#050505',
-                surface: '#0a0a0b',
-                accent: '#3b82f6'
+                primary: '#3794FF', // Classic Cursor Blue
+                secondary: '#2563EB',
+                dark: '#000000',
+                surface: '#111111',
               },
-            },
-            backgroundImage: {
-              'premium-gradient': 'linear-gradient(135deg, #2EA446 0%, #AFD244 100%)',
             },
             animation: {
                 'float': 'float 6s ease-in-out infinite',
@@ -89,7 +121,7 @@
 }
 </script>
 </head>
-  <body class="bg-[#050505] text-white overflow-hidden">
+  <body class="overflow-hidden">
     <div id="root"></div>
   </body>
 </html>

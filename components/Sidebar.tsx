@@ -1,6 +1,6 @@
 
 import React, { useRef, useState, useMemo } from 'react';
-import { FilePlus, Upload, Download, FileCode, Trash2, MoreHorizontal, Search as SearchIcon, Cloud, Box, Archive } from 'lucide-react';
+import { FilePlus, FolderPlus, Download, FileCode, Trash2, Search as SearchIcon, ChevronRight, ChevronDown, Box, MoreVertical, Cloud, Layers, Star, Info } from 'lucide-react';
 import { CodeFile, ViewMode, Extension } from '../types';
 
 interface SidebarProps {
@@ -8,12 +8,95 @@ interface SidebarProps {
   activeFileId: string | null;
   activeView: ViewMode;
   onSelectFile: (id: string) => void;
-  onCreateFile: () => void;
+  onCreateFile: (name: string, isFolder?: boolean) => void;
   onDeleteFile: (id: string, e: React.MouseEvent) => void;
   onImportFile: (file: File) => void;
   onExportFile: (file: CodeFile) => void;
   onExportZip: () => void;
 }
+
+// Helper to build tree structure from paths
+const buildFileTree = (files: CodeFile[]) => {
+    const root: any = {};
+    files.forEach(file => {
+        const parts = file.path ? file.path.split('/') : [file.name];
+        let current = root;
+        parts.forEach((part, index) => {
+            if (!current[part]) {
+                current[part] = index === parts.length - 1 ? { ...file, type: 'file' } : { type: 'folder', children: {} };
+            }
+            current = current[part].children || current[part];
+        });
+    });
+    return root;
+};
+
+// Recursive Tree Component
+const FileTreeItem: React.FC<{ 
+    name: string; 
+    item: any; 
+    depth: number; 
+    activeFileId: string | null;
+    onSelect: (id: string) => void;
+    onDelete: (id: string, e: React.MouseEvent) => void;
+}> = ({ name, item, depth, activeFileId, onSelect, onDelete }) => {
+    const [isOpen, setIsOpen] = useState(true);
+    const isFolder = item.type === 'folder';
+
+    if (isFolder) {
+        return (
+            <div>
+                <div 
+                    className="flex items-center gap-1 py-1 px-2 hover:bg-[#2a2d2e] cursor-pointer text-gray-400 hover:text-white transition-colors select-none"
+                    style={{ paddingLeft: `${depth * 12 + 8}px` }}
+                    onClick={() => setIsOpen(!isOpen)}
+                >
+                    {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                    <span className="text-[13px] font-medium truncate">{name}</span>
+                </div>
+                {isOpen && (
+                    <div>
+                        {Object.entries(item.children).map(([childName, childItem]) => (
+                            <FileTreeItem 
+                                key={childName} 
+                                name={childName} 
+                                item={childItem} 
+                                depth={depth + 1}
+                                activeFileId={activeFileId}
+                                onSelect={onSelect}
+                                onDelete={onDelete}
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    return (
+        <div 
+            className={`flex items-center justify-between group py-1 px-2 cursor-pointer select-none transition-colors border-l-2 ${
+                item.id === activeFileId 
+                ? 'bg-brand-primary/20 text-white border-brand-primary' 
+                : 'text-gray-400 hover:bg-[#2a2d2e] hover:text-white border-transparent'
+            }`}
+            style={{ paddingLeft: `${depth * 12 + 12}px` }}
+            onClick={() => onSelect(item.id)}
+        >
+            <div className="flex items-center gap-2 overflow-hidden">
+                <FileCode className={`w-3.5 h-3.5 flex-shrink-0 ${item.id === activeFileId ? 'text-brand-primary' : 'text-gray-500'}`} />
+                <span className="text-[13px] truncate">{name}</span>
+                {item.isUnsaved && <div className="w-1.5 h-1.5 rounded-full bg-white ml-1"></div>}
+            </div>
+            <button 
+                onClick={(e) => onDelete(item.id, e)}
+                className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-white/10 rounded text-gray-400 hover:text-red-400"
+            >
+                <Trash2 className="w-3 h-3" />
+            </button>
+        </div>
+    );
+};
 
 export const Sidebar: React.FC<SidebarProps> = ({
   files,
@@ -29,11 +112,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Initial Mock Extensions
   const [extensions, setExtensions] = useState<Extension[]>([
-    { id: '1', name: 'Prettier', description: 'Code formatter', author: 'Prettier', icon: 'P', installed: true },
-    { id: '2', name: 'ESLint', description: 'Linting utility', author: 'Microsoft', icon: 'E', installed: true },
-    { id: '3', name: 'Python', description: 'Language support', author: 'Microsoft', icon: 'Py', installed: false },
-    { id: '4', name: 'Docker', description: 'Container support', author: 'Docker', icon: 'D', installed: false },
+    { id: '1', name: 'python', displayName: 'Python', description: 'IntelliSense, linting, and debugging for Python.', author: 'Microsoft', version: '2024.2.1', downloads: '100M+', icon: 'Py', installed: false, category: 'Language' },
+    { id: '2', name: 'prettier', displayName: 'Prettier - Code formatted', description: 'Code formatter using prettier', author: 'Prettier', version: '10.1.0', downloads: '40M+', icon: 'Pr', installed: true, category: 'Linter' },
+    { id: '3', name: 'docker', displayName: 'Docker', description: 'Makes it easy to create, manage, and debug containerized applications.', author: 'Microsoft', version: '1.29.0', downloads: '28M+', icon: 'Dk', installed: false, category: 'Other' },
+    { id: '4', name: 'eslint', displayName: 'ESLint', description: 'Integrates ESLint JavaScript into VS Code.', author: 'Microsoft', version: '2.4.4', downloads: '32M+', icon: 'Es', installed: true, category: 'Linter' },
+    { id: '5', name: 'csharp', displayName: 'C# Dev Kit', description: 'Official C# extension for VS Code.', author: 'Microsoft', version: '1.3.0', downloads: '12M+', icon: 'C#', installed: false, category: 'Language' },
+    { id: '6', name: 'github-copilot', displayName: 'GitHub Copilot', description: 'Your AI pair programmer.', author: 'GitHub', version: '1.156.0', downloads: '15M+', icon: 'Ai', installed: true, category: 'Other' },
+    { id: '7', name: 'vscode-icons', displayName: 'vscode-icons', description: 'Icons for Visual Studio Code', author: 'VSCode Icons Team', version: '12.0.0', downloads: '16M+', icon: 'Ic', installed: false, category: 'Theme' },
   ]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,69 +134,50 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setExtensions(prev => prev.map(ex => ex.id === id ? { ...ex, installed: !ex.installed } : ex));
   };
 
-  const filteredFiles = useMemo(() => {
-    if (!searchTerm) return files;
-    return files.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [files, searchTerm]);
+  const fileTree = useMemo(() => buildFileTree(files), [files]);
 
   // --- RENDER CONTENT BASED ON ACTIVE VIEW ---
 
   const renderExplorer = () => (
     <>
-      <div className="p-4 flex items-center justify-between flex-shrink-0">
-        <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Explorer</span>
-        <div className="flex gap-1">
-            <button onClick={onCreateFile} className="p-1.5 hover:bg-white/10 rounded-md text-gray-400 hover:text-brand-primary transition-colors" title="New File">
-                <FilePlus className="w-4 h-4" />
+      <div className="h-9 flex items-center justify-between px-4 flex-shrink-0 group">
+        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider group-hover:text-white transition-colors">Explorer</span>
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button onClick={() => onCreateFile("New File")} className="p-1 hover:bg-[#3f3f46] rounded text-gray-400 hover:text-white" title="New File">
+                <FilePlus className="w-3.5 h-3.5" />
             </button>
-            <button onClick={() => fileInputRef.current?.click()} className="p-1.5 hover:bg-white/10 rounded-md text-gray-400 hover:text-brand-primary transition-colors" title="Upload File">
-                <Upload className="w-4 h-4" />
+            <button onClick={() => fileInputRef.current?.click()} className="p-1 hover:bg-[#3f3f46] rounded text-gray-400 hover:text-white" title="Import File">
+                <FolderPlus className="w-3.5 h-3.5" />
             </button>
-            <button onClick={onExportZip} className="p-1.5 hover:bg-white/10 rounded-md text-gray-400 hover:text-brand-primary transition-colors" title="Download Project (ZIP)">
-                <Archive className="w-4 h-4" />
+             <button onClick={onExportZip} className="p-1 hover:bg-[#3f3f46] rounded text-gray-400 hover:text-white" title="Download Zip">
+                <Download className="w-3.5 h-3.5" />
+            </button>
+            <button className="p-1 hover:bg-[#3f3f46] rounded text-gray-400 hover:text-white">
+                <MoreVertical className="w-3.5 h-3.5" />
             </button>
         </div>
       </div>
       
-      <div className="px-2 overflow-y-auto flex-1 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pt-1">
         {files.length === 0 ? (
-            <div className="text-center mt-10 p-4">
-                <p className="text-sm text-gray-600">No files open.</p>
-                <button onClick={onCreateFile} className="mt-2 text-xs text-brand-primary hover:underline font-bold">Create one</button>
+            <div className="flex flex-col items-center justify-center h-40 text-gray-500">
+                <p className="text-xs">No open folder</p>
+                <button onClick={() => onCreateFile('main.ts')} className="mt-2 px-3 py-1.5 bg-brand-primary text-white text-xs rounded hover:bg-brand-primary/90">Open Folder</button>
             </div>
         ) : (
-            files.map((file) => (
-                <div
-                key={file.id}
-                className={`group flex items-center justify-between px-3 py-2.5 my-1 rounded-lg cursor-pointer text-sm select-none transition-all duration-200 border border-transparent ${
-                    file.id === activeFileId
-                    ? 'bg-brand-primary/10 border-brand-primary/20 text-brand-primary font-bold'
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                }`}
-                onClick={() => onSelectFile(file.id)}
-                >
-                <div className="flex items-center gap-2 overflow-hidden">
-                    <FileCode className={`w-4 h-4 flex-shrink-0 ${file.id === activeFileId ? 'text-brand-primary' : 'opacity-70'}`} />
-                    <span className="truncate">{file.name}</span>
-                    {file.isUnsaved && <span className="w-1.5 h-1.5 rounded-full bg-brand-secondary ml-1 shadow-[0_0_5px_var(--brand-secondary)] flex-shrink-0"></span>}
-                </div>
-                
-                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-1">
-                    <button
-                    onClick={(e) => { e.stopPropagation(); onExportFile(file); }}
-                    className="p-1 hover:bg-white/10 rounded text-gray-400 hover:text-white"
-                    >
-                    <Download className="w-3 h-3" />
-                    </button>
-                    <button
-                    onClick={(e) => onDeleteFile(file.id, e)}
-                    className="p-1 hover:bg-red-500/10 rounded text-gray-400 hover:text-red-500"
-                    >
-                    <Trash2 className="w-3 h-3" />
-                    </button>
-                </div>
-                </div>
-            ))
+            <div className="flex flex-col">
+                {Object.entries(fileTree).map(([name, item]) => (
+                    <FileTreeItem 
+                        key={name} 
+                        name={name} 
+                        item={item} 
+                        depth={0} 
+                        activeFileId={activeFileId} 
+                        onSelect={onSelectFile}
+                        onDelete={onDeleteFile}
+                    />
+                ))}
+            </div>
         )}
       </div>
       <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} />
@@ -118,43 +186,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const renderExtensions = () => (
     <>
-        <div className="p-4 flex-shrink-0">
-            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Marketplace</span>
-            <div className="mt-4 relative group">
-                <SearchIcon className="absolute left-3 top-2.5 w-4 h-4 text-gray-500 group-focus-within:text-brand-primary transition-colors" />
+        <div className="h-auto p-4 flex-shrink-0 border-b border-[#27272a]">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-3">Extensions</span>
+            <div className="relative group">
                 <input 
                     type="text" 
-                    placeholder="Search extensions" 
-                    className="w-full pl-9 pr-3 py-2 bg-black/20 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-brand-primary/50 transition-colors"
+                    placeholder="Search Extensions in Marketplace" 
+                    className="w-full pl-2 pr-2 py-1.5 bg-[#27272a] border border-transparent focus:border-brand-primary rounded-sm text-xs text-white placeholder:text-gray-500 focus:outline-none transition-all"
                 />
             </div>
         </div>
-        <div className="px-2 overflow-y-auto flex-1 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+            <div className="px-4 py-2 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Popular</div>
             {extensions.map(ext => (
-                <div key={ext.id} className="flex items-start gap-3 p-3 mb-2 rounded-xl hover:bg-white/5 transition-colors group border border-transparent hover:border-white/10">
-                    <div className="w-10 h-10 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-brand-primary/20 text-xs flex-shrink-0">
+                <div key={ext.id} className="flex gap-3 px-4 py-3 hover:bg-[#2a2d2e] cursor-pointer group border-b border-[#27272a]/50">
+                    <div className="w-10 h-10 bg-[#27272a] rounded shadow-sm flex items-center justify-center text-sm font-bold text-brand-primary flex-shrink-0">
                         {ext.icon}
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start">
-                            <h4 className="text-sm font-bold text-gray-200">{ext.name}</h4>
-                            {ext.installed && <span className="text-[9px] bg-brand-primary/10 text-brand-primary px-1.5 py-0.5 rounded font-black uppercase tracking-wider">Installed</span>}
+                            <h4 className="text-[13px] font-bold text-gray-200 truncate">{ext.displayName}</h4>
                         </div>
-                        <p className="text-[11px] text-gray-500 truncate mt-0.5">{ext.description}</p>
-                        <div className="flex items-center justify-between mt-3">
-                             <span className="text-[10px] text-gray-600 flex items-center gap-1">
-                                <Box className="w-3 h-3" /> {ext.author}
-                             </span>
-                             <button 
-                                onClick={() => toggleExtension(ext.id)}
-                                className={`text-[10px] px-2 py-1 rounded-md transition-all font-bold uppercase tracking-wide ${
+                        <p className="text-[11px] text-gray-500 truncate">{ext.description}</p>
+                        <div className="flex items-center gap-3 mt-1.5">
+                            <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                                {ext.author}
+                            </span>
+                            <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                                <Download className="w-2.5 h-2.5" /> {ext.downloads}
+                            </span>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between">
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); toggleExtension(ext.id); }}
+                                className={`text-[11px] px-2 py-0.5 rounded-[2px] font-medium transition-colors ${
                                     ext.installed 
-                                    ? 'bg-white/5 text-gray-400 hover:bg-white/10' 
-                                    : 'bg-brand-primary text-black hover:scale-105'
+                                    ? 'bg-[#27272a] text-gray-400 hover:text-white' 
+                                    : 'bg-brand-primary text-white hover:bg-brand-primary/90'
                                 }`}
-                             >
-                                {ext.installed ? 'Disable' : 'Install'}
-                             </button>
+                            >
+                                {ext.installed ? 'Manage' : 'Install'}
+                            </button>
+                            {ext.installed && <Star className="w-3 h-3 text-yellow-500 fill-current" />}
                         </div>
                     </div>
                 </div>
@@ -166,46 +239,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const renderSearch = () => (
       <div className="flex flex-col h-full">
         <div className="p-4 flex-shrink-0">
-            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Global Search</span>
-            <div className="mt-4 flex gap-2 relative group">
-                <SearchIcon className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-3">Search</span>
+            <div className="relative">
+                <SearchIcon className="absolute left-2 top-2 w-3.5 h-3.5 text-gray-500" />
                 <input 
                     type="text" 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search..." 
-                    className="w-full pl-9 pr-3 py-2 bg-black/20 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-brand-primary/50 transition-colors"
+                    placeholder="Search" 
+                    className="w-full pl-7 pr-2 py-1.5 bg-[#27272a] border border-transparent focus:border-brand-primary rounded-sm text-xs text-white focus:outline-none transition-all"
                 />
             </div>
         </div>
         
         <div className="flex-1 overflow-y-auto px-2 custom-scrollbar">
-            {searchTerm && filteredFiles.length === 0 && (
-                <div className="mt-8 text-center text-gray-600 text-xs font-bold uppercase tracking-widest">
-                    No matching files found.
+            {searchTerm && (
+                <div className="text-xs text-gray-500 text-center mt-4">
+                    Searching for "{searchTerm}"...
                 </div>
             )}
-            
-            {filteredFiles.map((file) => (
-                <div
-                    key={file.id}
-                    className={`flex items-center gap-2 px-3 py-2.5 my-1 rounded-lg cursor-pointer text-sm select-none transition-all duration-200 border border-transparent ${
-                        file.id === activeFileId
-                        ? 'bg-brand-primary/10 border-brand-primary/20 text-brand-primary font-bold'
-                        : 'text-gray-400 hover:text-white hover:bg-white/5'
-                    }`}
-                    onClick={() => onSelectFile(file.id)}
-                >
-                    <FileCode className="w-4 h-4 opacity-70" />
-                    <span className="truncate">{file.name}</span>
-                </div>
-            ))}
         </div>
       </div>
   );
 
   return (
-    <div className="w-64 bg-[#0a0a0b] flex flex-col h-full z-20 border-r border-white/5">
+    <div className="w-64 bg-[#09090b] flex flex-col h-full z-20 border-r border-[#27272a]">
       <div className="flex-1 overflow-hidden flex flex-col">
         {activeView === 'explorer' && renderExplorer()}
         {activeView === 'extensions' && renderExtensions()}

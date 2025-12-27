@@ -6,36 +6,37 @@ import { CodeEditor } from './components/Editor';
 import { AIAssistant } from './components/AIAssistant';
 import { SettingsModal } from './components/SettingsModal';
 import { PreviewModal } from './components/PreviewModal';
+import { StatusBar } from './components/StatusBar';
+import { MenuBar } from './components/MenuBar';
+import { AgentManagerModal } from './components/AgentManagerModal';
 import { CodeFile, EditorSettings, ViewMode, Project, User, AgentTask, AgentStatus, AgentRole, EXTENSION_TO_LANGUAGE, ProjectConfig } from './types';
-import { constructActionPrompt } from './services/geminiService';
+import { constructActionPrompt, createChatSession } from './services/geminiService';
 import { CloudService } from './services/cloudService';
-import { Play, Plus, Clock, ArrowRight, Bot, LogOut, Loader2 } from 'lucide-react';
+import { Play, Plus, Search, ArrowLeft, Bot, PanelRightClose, PanelRightOpen, LayoutTemplate, Command } from 'lucide-react';
 import JSZip from 'jszip';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
 function App() {
-  // Start directly at dashboard
   const [appState, setAppState] = useState<'dashboard' | 'editor'>('dashboard');
   const [isLoading, setIsLoading] = useState(true);
   
-  // Mock User - Auth is disabled
-  const [user, setUser] = useState<User>({
-    id: 'mock-user-1',
-    email: 'dev@cursor.ai',
-    displayName: 'Senior Developer',
-    avatar: 'SD'
-  });
-
   const [projects, setProjects] = useState<Project[]>([]);
   const [files, setFiles] = useState<CodeFile[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<ViewMode>('explorer');
+  
   const [isAIStatsOpen, setIsAIStatsOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isAgentManagerOpen, setIsAgentManagerOpen] = useState(false);
+
   const [aiTrigger, setAiTrigger] = useState<string | undefined>(undefined);
+  
+  // Editor State Tracking
+  const [cursorPos, setCursorPos] = useState({ ln: 1, col: 1 });
   
   const [persistentAgentState, setPersistentAgentState] = useState<{
     prompt: string;
@@ -53,14 +54,24 @@ function App() {
     config: undefined
   });
 
-  // Forced Dark Theme Settings
   const [settings, setSettings] = useState<EditorSettings>({
-    theme: 'dark',
+    theme: 'cursor-dark',
     fontSize: 14,
     wordWrap: true,
     minimap: true,
-    language: 'tr'
+    language: 'en',
+    rules: '',
+    mcpServers: []
   });
+
+  // --- THEME MANAGEMENT ---
+  useEffect(() => {
+      const html = document.documentElement;
+      // Remove all theme classes first
+      ['cursor-dark', 'cursor-light', 'vercel-dark', 'dracula', 'monokai', 'nord'].forEach(t => html.classList.remove(t));
+      // Add active theme
+      html.classList.add(settings.theme);
+  }, [settings.theme]);
 
   useEffect(() => {
     const initApp = async () => {
@@ -86,76 +97,98 @@ function App() {
     const newProject: Project = {
       id: generateId(),
       name: `Project ${projects.length + 1}`,
-      description: 'Modern AI Projesi',
+      description: 'Untitled Project',
       updatedAt: Date.now(),
-      files: [{ id: generateId(), name: 'App.tsx', language: 'typescript', content: '// Start building...', isUnsaved: false }]
+      files: [{ id: generateId(), name: 'App.tsx', path: 'src/App.tsx', language: 'typescript', content: '// Start building...', isUnsaved: false }]
     };
     const updatedProjects = await CloudService.saveProject(newProject);
     setProjects(updatedProjects);
     setCurrentProject(newProject);
     setFiles(newProject.files);
     setActiveFileId(newProject.files[0].id);
-    
-    setPersistentAgentState({
-        prompt: '',
-        status: 'idle',
-        tasks: [],
-        logs: [],
-        activeAgent: null,
-        config: undefined
-    });
-
     setAppState('editor');
     setIsLoading(false);
   };
 
-  const handleAgentCreateFile = (name: string, content: string) => {
+  const handleCreateFile = (name: string, content: string | boolean = '') => {
+    const fileContent = typeof content === 'string' ? content : '';
     const ext = name.includes('.') ? name.substring(name.lastIndexOf('.')) : '';
     const language = EXTENSION_TO_LANGUAGE[ext.toLowerCase()] || 'plaintext';
-    const newFile: CodeFile = { id: generateId(), name, language, content, isUnsaved: true };
+    const newFile: CodeFile = { 
+        id: generateId(), 
+        name, 
+        path: name,
+        language, 
+        content: fileContent, 
+        isUnsaved: true 
+    };
     setFiles(prev => [...prev, newFile]);
     setActiveFileId(newFile.id);
   };
-
-  const handleExportZip = async () => {
-      const zip = new JSZip();
-      files.forEach(f => zip.file(f.name, f.content));
-      const content = await zip.generateAsync({ type: "blob" });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(content);
-      link.download = `${currentProject?.name || 'project'}.zip`;
-      link.click();
+  
+  const handleUpdateFile = (fileName: string, content: string) => {
+      setFiles(prev => prev.map(f => f.name === fileName ? { ...f, content, isUnsaved: true } : f));
   };
 
-  if (isLoading) return <div className="h-screen bg-[#050505] flex items-center justify-center"><Loader2 className="w-10 h-10 text-brand-primary animate-spin" /></div>;
+  const handleMenuAction = (action: string) => {
+      switch(action) {
+          case 'new_file':
+              handleCreateFile('Untitled.ts');
+              break;
+          case 'save':
+          case 'save_all':
+              if (activeFileId) {
+                  setFiles(prev => prev.map(f => ({ ...f, isUnsaved: false })));
+                  if (currentProject) CloudService.syncProjectFiles(currentProject.id, files);
+              }
+              break;
+          case 'view_explorer': setActiveView('explorer'); setIsSidebarOpen(true); break;
+          case 'view_search': setActiveView('search'); setIsSidebarOpen(true); break;
+          case 'view_extensions': setActiveView('extensions'); setIsSidebarOpen(true); break;
+          case 'run_debug':
+          case 'run_no_debug':
+              setIsPreviewOpen(true);
+              break;
+          case 'undo': console.log("Undo"); break;
+      }
+  };
 
-  // Replaced Landing Page with Dashboard logic
+  if (isLoading) return <div className="h-screen bg-[#09090b] flex items-center justify-center text-gray-500 text-xs tracking-widest uppercase">Initializing Environment...</div>;
+
+  // --- DASHBOARD VIEW ---
   if (appState === 'dashboard') {
       return (
-          <div className="h-screen bg-[#050505] text-white p-12 overflow-hidden flex flex-col">
-              <header className="flex justify-between items-center mb-16 flex-shrink-0">
-                  <div className="flex items-center gap-3 font-black text-2xl tracking-tighter"><Bot className="w-8 h-8 text-brand-primary" /> CURSOR <span className="text-brand-primary text-sm align-top ml-1">PREMIUM</span></div>
+          <div className="h-screen bg-[#09090b] text-white p-16 flex flex-col font-sans selection:bg-[#3794FF] selection:text-white">
+              <header className="flex justify-between items-center mb-20">
+                  <div className="flex items-center gap-3 font-medium text-xl tracking-tight text-gray-200">
+                      <div className="w-8 h-8 bg-[#3794FF] rounded-lg flex items-center justify-center text-black">
+                        <Bot className="w-5 h-5" />
+                      </div>
+                      Cursor
+                  </div>
               </header>
-              <main className="max-w-6xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 gap-8 flex-1 min-h-0">
-                  <button onClick={startNewProject} className="h-full max-h-[400px] bg-brand-surface border border-white/5 rounded-[40px] hover:border-brand-primary/50 transition-all flex flex-col items-center justify-center gap-6 group relative overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      <div className="w-20 h-20 rounded-3xl bg-brand-primary/10 flex items-center justify-center group-hover:scale-110 transition-all border border-brand-primary/20"><Plus className="w-8 h-8 text-brand-primary" /></div>
-                      <span className="font-black uppercase tracking-[0.2em] text-sm text-gray-400 group-hover:text-white">Yeni Proje Mimarisi</span>
-                  </button>
-                  <div className="bg-brand-surface border border-white/5 rounded-[40px] p-8 overflow-y-auto max-h-[400px]">
-                      <h3 className="font-black uppercase tracking-widest text-[10px] text-gray-500 mb-6 sticky top-0 bg-brand-surface pb-4 border-b border-white/5">Mevcut Projeler</h3>
-                      <div className="space-y-3">
-                          {projects.length === 0 && (
-                             <div className="text-center py-10 opacity-40 italic">Henüz proje yok.</div>
-                          )}
+              <main className="max-w-4xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 gap-12">
+                  <div className="space-y-6">
+                      <h2 className="text-2xl font-normal text-white">Get Started</h2>
+                      <div className="grid gap-4">
+                        <button onClick={startNewProject} className="group flex items-center gap-4 p-4 bg-[#18181b] border border-[#27272a] hover:border-[#3794FF] hover:bg-[#1f1f23] rounded-lg transition-all text-left">
+                            <Plus className="w-5 h-5 text-gray-400 group-hover:text-[#3794FF]" />
+                            <div>
+                                <h3 className="text-sm font-medium text-gray-200">New Project</h3>
+                                <p className="text-xs text-gray-500 mt-1">Start from scratch with AI assistance</p>
+                            </div>
+                        </button>
+                      </div>
+                  </div>
+                  <div className="space-y-6">
+                      <h2 className="text-2xl font-normal text-white">Recent</h2>
+                      <div className="space-y-1">
+                          {projects.length === 0 && <div className="text-gray-600 text-sm italic">No recent projects</div>}
                           {projects.map(p => (
-                              <div key={p.id} onClick={() => { setCurrentProject(p); setFiles(p.files); setActiveFileId(p.files[0]?.id); setAppState('editor'); }} className="p-5 bg-black/20 rounded-3xl hover:bg-white/5 cursor-pointer flex justify-between items-center border border-white/5 hover:border-brand-primary/30 transition-all group">
-                                  <div>
-                                      <h4 className="font-bold text-sm text-gray-200 group-hover:text-white">{p.name}</h4>
-                                      <p className="text-[10px] text-gray-600 uppercase font-bold tracking-widest mt-1"><Clock className="inline w-3 h-3 mr-1" /> {new Date(p.updatedAt).toLocaleDateString()}</p>
-                                  </div>
-                                  <ArrowRight className="w-4 h-4 text-gray-600 group-hover:text-brand-primary -translate-x-2 group-hover:translate-x-0 transition-all" />
-                              </div>
+                              <button key={p.id} onClick={() => { setCurrentProject(p); setFiles(p.files); setActiveFileId(p.files[0]?.id); setAppState('editor'); }} className="w-full text-left p-3 hover:bg-[#18181b] rounded-lg text-sm text-gray-400 hover:text-white transition-colors flex justify-between group">
+                                  <span>{p.name}</span>
+                                  <span className="text-xs text-gray-600 group-hover:text-gray-500">{new Date(p.updatedAt).toLocaleDateString()}</span>
+                              </button>
                           ))}
                       </div>
                   </div>
@@ -164,76 +197,144 @@ function App() {
       )
   }
 
+  // --- EDITOR WORKSPACE VIEW ---
   return (
-    <div className="flex h-screen bg-[#050505] text-white overflow-hidden font-sans">
-      <div className="flex flex-row h-full z-40 fixed inset-y-0 left-0 md:relative">
+    <div className="flex flex-col h-screen theme-bg-main theme-text overflow-hidden font-sans transition-colors duration-300">
+      
+      {/* GLOBAL MENU BAR (Topmost) */}
+      <MenuBar 
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          isSidebarOpen={isSidebarOpen}
+          onToggleAiPanel={() => setIsAIStatsOpen(!isAIStatsOpen)}
+          isAiPanelOpen={isAIStatsOpen}
+          onAction={handleMenuAction}
+          onOpenAgentManager={() => setIsAgentManagerOpen(true)}
+      />
+
+      {/* MAIN LAYOUT */}
+      <div className="flex-1 flex min-h-0">
+          
+          {/* ACTIVITY BAR (Leftmost) */}
           <ActivityBar 
             activeView={activeView} 
             onViewChange={setActiveView}
             onToggleAI={() => setIsAIStatsOpen(!isAIStatsOpen)}
             onOpenSettings={() => setIsSettingsOpen(true)}
           />
-          <Sidebar
-            files={files}
-            activeFileId={activeFileId}
-            activeView={activeView}
-            onSelectFile={setActiveFileId}
-            onCreateFile={() => handleAgentCreateFile(`new_file_${files.length}.ts`, '')}
-            onDeleteFile={(id, e) => { e.stopPropagation(); setFiles(prev => prev.filter(f => f.id !== id)); }}
-            onImportFile={(file) => {
-                const reader = new FileReader();
-                reader.onload = (e) => handleAgentCreateFile(file.name, e.target?.result as string);
-                reader.readAsText(file);
-            }}
-            onExportFile={() => {}}
-            onExportZip={handleExportZip}
-          />
+
+          {/* SIDEBAR (Explorer) */}
+          {isSidebarOpen && (
+              <Sidebar
+                files={files}
+                activeFileId={activeFileId}
+                activeView={activeView}
+                onSelectFile={setActiveFileId}
+                onCreateFile={handleCreateFile}
+                onDeleteFile={(id, e) => { e.stopPropagation(); setFiles(prev => prev.filter(f => f.id !== id)); }}
+                onImportFile={(file) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => handleCreateFile(file.name); 
+                    reader.readAsText(file);
+                }}
+                onExportFile={() => {}}
+                onExportZip={() => {}}
+              />
+          )}
+
+          {/* MAIN CONTENT AREA */}
+          <div className="flex-1 flex flex-col min-w-0 theme-bg-main">
+              
+              {/* FILE TABS */}
+              <div className="h-9 flex items-center px-0 theme-border border-b select-none overflow-x-auto custom-scrollbar theme-bg-sec">
+                   {/* Active File Tab */}
+                   {files.map(file => (
+                       <div 
+                            key={file.id}
+                            onClick={() => setActiveFileId(file.id)}
+                            className={`flex items-center gap-2 px-3 py-2 text-xs cursor-pointer border-r min-w-[120px] max-w-[200px] group theme-border ${
+                                file.id === activeFileId 
+                                ? 'theme-bg-main theme-text border-t-2 border-t-[#3794FF]' 
+                                : 'theme-bg-sec text-gray-500 hover:bg-white/5'
+                            }`}
+                       >
+                            <span className="truncate flex-1">{file.name}</span>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); setFiles(prev => prev.filter(f => f.id !== file.id)); }} 
+                                className={`opacity-0 group-hover:opacity-100 hover:bg-white/10 rounded p-0.5 ${file.isUnsaved ? 'block opacity-100' : ''}`}
+                            >
+                                {file.isUnsaved ? <div className="w-2 h-2 rounded-full theme-text bg-current opacity-70"></div> : <span className="text-gray-400 hover:text-red-500">×</span>}
+                            </button>
+                       </div>
+                   ))}
+              </div>
+
+              {/* EDITOR + AI SPLIT VIEW */}
+              <div className="flex-1 flex min-h-0 relative">
+                  
+                  {/* EDITOR */}
+                  <div className="flex-1 relative min-w-0">
+                      <CodeEditor
+                        language={files.find(f => f.id === activeFileId)?.language || 'typescript'}
+                        value={files.find(f => f.id === activeFileId)?.content || ''}
+                        onChange={(val) => setFiles(prev => prev.map(f => f.id === activeFileId ? { ...f, content: val || '', isUnsaved: true } : f))}
+                        settings={settings}
+                      />
+                      
+                      {/* Floating Run Button */}
+                      <button 
+                        onClick={() => setIsPreviewOpen(true)}
+                        className="absolute top-4 right-6 bg-green-600 hover:bg-green-500 text-white p-2 rounded-full shadow-lg z-10 transition-transform hover:scale-105"
+                        title="Run Code"
+                      >
+                          <Play className="w-4 h-4 fill-current" />
+                      </button>
+                  </div>
+
+                  {/* AI ASSISTANT PANEL */}
+                  {isAIStatsOpen && (
+                      <div className="w-[400px] theme-border border-l flex flex-col shadow-xl z-10 transition-all theme-bg-sec">
+                          <AIAssistant 
+                            isVisible={true}
+                            onClose={() => setIsAIStatsOpen(false)} 
+                            activeFile={files.find(f => f.id === activeFileId)} 
+                            files={files} 
+                            onUpdateFile={handleUpdateFile}
+                            onCreateFile={handleCreateFile}
+                            onDeleteFile={(n) => setFiles(prev => prev.filter(f => f.name !== n))}
+                            onOpenPreview={() => setIsPreviewOpen(true)}
+                            onAction={(a) => {
+                                const f = files.find(f => f.id === activeFileId);
+                                if(f) { setAiTrigger(constructActionPrompt(a, f.content, f.language)); }
+                            }}
+                            onFocusFile={(n) => { const f = files.find(f => f.name === n); if(f) setActiveFileId(f.id); }}
+                            triggerPrompt={aiTrigger}
+                            onPromptHandled={() => setAiTrigger(undefined)}
+                            persistentState={persistentAgentState}
+                            setPersistentState={setPersistentAgentState}
+                          />
+                      </div>
+                  )}
+              </div>
+          </div>
       </div>
 
-      <div className="flex-1 flex flex-col min-w-0 bg-[#0a0a0b] border-l border-white/5">
-        <header className="h-14 border-b border-white/5 flex items-center justify-between px-6 bg-[#0a0a0b] z-10">
-          <div className="flex items-center gap-4">
-              <button onClick={() => setAppState('dashboard')} className="text-[10px] font-black uppercase tracking-widest opacity-30 hover:opacity-100 transition-all">← Dash</button>
-              <h1 className="font-black text-xs tracking-widest uppercase opacity-80 text-brand-primary">{files.find(f => f.id === activeFileId)?.name}</h1>
-          </div>
-          <div className="flex gap-3">
-              <button onClick={() => setIsPreviewOpen(true)} className="bg-white text-black px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-brand-primary hover:text-white transition-all shadow-lg hover:shadow-brand-primary/20">
-                  <Play className="w-3 h-3 fill-current" /> Çalıştır / Live
-              </button>
-          </div>
-        </header>
-        <main className="flex-1 relative">
-          <CodeEditor
-            language={files.find(f => f.id === activeFileId)?.language || 'typescript'}
-            value={files.find(f => f.id === activeFileId)?.content || ''}
-            onChange={(val) => setFiles(prev => prev.map(f => f.id === activeFileId ? { ...f, content: val || '', isUnsaved: true } : f))}
-            settings={settings}
-          />
-        </main>
-      </div>
-
-      <AIAssistant 
-        isVisible={isAIStatsOpen} 
-        onClose={() => setIsAIStatsOpen(false)} 
-        activeFile={files.find(f => f.id === activeFileId)} 
-        files={files} 
-        onUpdateFile={(n, c) => setFiles(prev => prev.map(f => f.name === n ? { ...f, content: c } : f))}
-        onCreateFile={handleAgentCreateFile}
-        onDeleteFile={(n) => setFiles(prev => prev.filter(f => f.name !== n))}
-        onOpenPreview={() => setIsPreviewOpen(true)}
-        onAction={(a) => {
-            const f = files.find(f => f.id === activeFileId);
-            if(f) { setAiTrigger(constructActionPrompt(a, f.content, f.language)); setIsAIStatsOpen(true); }
-        }}
-        onFocusFile={(n) => { const f = files.find(f => f.name === n); if(f) setActiveFileId(f.id); }}
-        triggerPrompt={aiTrigger}
-        onPromptHandled={() => setAiTrigger(undefined)}
-        persistentState={persistentAgentState}
-        setPersistentState={setPersistentAgentState}
+      {/* STATUS BAR */}
+      <StatusBar 
+         file={files.find(f => f.id === activeFileId)} 
+         isSaving={files.some(f => f.isUnsaved)}
+         cursorPosition={cursorPos}
       />
 
-      <PreviewModal isOpen={isPreviewOpen} onClose={() => setIsPreviewOpen(false)} files={files} onFixError={(e) => { setAiTrigger(`Düzelt: ${e}`); setIsAIStatsOpen(true); setIsPreviewOpen(false); }} />
+      <PreviewModal 
+        isOpen={isPreviewOpen} 
+        onClose={() => setIsPreviewOpen(false)} 
+        files={files} 
+        onUpdateFile={handleUpdateFile}
+        onFixError={(e) => { setAiTrigger(`Fix this error: ${e}`); setIsAIStatsOpen(true); setIsPreviewOpen(false); }} 
+      />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} onUpdateSettings={setSettings} />
+      <AgentManagerModal isOpen={isAgentManagerOpen} onClose={() => setIsAgentManagerOpen(false)} activeAgent={persistentAgentState.activeAgent} agentStatus={persistentAgentState.status} />
     </div>
   );
 }
