@@ -47,7 +47,7 @@ const FileTreeItem: React.FC<{
         return (
             <div>
                 <div 
-                    className="flex items-center gap-1 py-1 px-2 hover:bg-[#2a2d2e] cursor-pointer text-gray-400 hover:text-white transition-colors select-none"
+                    className="flex items-center gap-1 py-1 px-2 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer theme-text opacity-70 hover:opacity-100 transition-colors select-none"
                     style={{ paddingLeft: `${depth * 12 + 8}px` }}
                     onClick={() => setIsOpen(!isOpen)}
                 >
@@ -77,8 +77,8 @@ const FileTreeItem: React.FC<{
         <div 
             className={`flex items-center justify-between group py-1 px-2 cursor-pointer select-none transition-colors border-l-2 ${
                 item.id === activeFileId 
-                ? 'bg-brand-primary/20 text-white border-brand-primary' 
-                : 'text-gray-400 hover:bg-[#2a2d2e] hover:text-white border-transparent'
+                ? 'bg-brand-primary/20 theme-text border-brand-primary' 
+                : 'theme-text opacity-70 hover:bg-black/5 dark:hover:bg-white/5 hover:opacity-100 border-transparent'
             }`}
             style={{ paddingLeft: `${depth * 12 + 12}px` }}
             onClick={() => onSelect(item.id)}
@@ -90,7 +90,7 @@ const FileTreeItem: React.FC<{
             </div>
             <button 
                 onClick={(e) => onDelete(item.id, e)}
-                className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-white/10 rounded text-gray-400 hover:text-red-400"
+                className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-black/10 dark:hover:bg-white/10 rounded text-gray-500 hover:text-red-400"
             >
                 <Trash2 className="w-3 h-3" />
             </button>
@@ -112,7 +112,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Initial Mock Extensions
   const [extensions, setExtensions] = useState<Extension[]>([
     { id: '1', name: 'python', displayName: 'Python', description: 'IntelliSense, linting, and debugging for Python.', author: 'Microsoft', version: '2024.2.1', downloads: '100M+', icon: 'Py', installed: false, category: 'Language' },
     { id: '2', name: 'prettier', displayName: 'Prettier - Code formatted', description: 'Code formatter using prettier', author: 'Prettier', version: '10.1.0', downloads: '40M+', icon: 'Pr', installed: true, category: 'Linter' },
@@ -136,23 +135,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const fileTree = useMemo(() => buildFileTree(files), [files]);
 
-  // --- RENDER CONTENT BASED ON ACTIVE VIEW ---
-
   const renderExplorer = () => (
     <>
       <div className="h-9 flex items-center justify-between px-4 flex-shrink-0 group">
-        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider group-hover:text-white transition-colors">Explorer</span>
+        <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider group-hover:theme-text transition-colors">Explorer</span>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={() => onCreateFile("New File")} className="p-1 hover:bg-[#3f3f46] rounded text-gray-400 hover:text-white" title="New File">
+            <button onClick={() => onCreateFile("New File")} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="New File">
                 <FilePlus className="w-3.5 h-3.5" />
             </button>
-            <button onClick={() => fileInputRef.current?.click()} className="p-1 hover:bg-[#3f3f46] rounded text-gray-400 hover:text-white" title="Import File">
+            <button onClick={() => fileInputRef.current?.click()} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="Import File">
                 <FolderPlus className="w-3.5 h-3.5" />
             </button>
-             <button onClick={onExportZip} className="p-1 hover:bg-[#3f3f46] rounded text-gray-400 hover:text-white" title="Download Zip">
+             <button onClick={onExportZip} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="Download Zip">
                 <Download className="w-3.5 h-3.5" />
             </button>
-            <button className="p-1 hover:bg-[#3f3f46] rounded text-gray-400 hover:text-white">
+            <button className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text">
                 <MoreVertical className="w-3.5 h-3.5" />
             </button>
         </div>
@@ -186,26 +183,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const renderExtensions = () => (
     <>
-        <div className="h-auto p-4 flex-shrink-0 border-b border-[#27272a]">
-            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-3">Extensions</span>
+        <div className="h-auto p-4 flex-shrink-0 theme-border border-b">
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-3">Extensions</span>
             <div className="relative group">
                 <input 
                     type="text" 
-                    placeholder="Search Extensions in Marketplace" 
-                    className="w-full pl-2 pr-2 py-1.5 bg-[#27272a] border border-transparent focus:border-brand-primary rounded-sm text-xs text-white placeholder:text-gray-500 focus:outline-none transition-all"
+                    placeholder="Search Extensions" 
+                    className="w-full pl-2 pr-2 py-1.5 theme-bg-main theme-border border rounded-sm text-xs theme-text placeholder:text-gray-500 focus:outline-none focus:border-brand-primary transition-all"
                 />
             </div>
         </div>
         <div className="flex-1 overflow-y-auto custom-scrollbar">
             <div className="px-4 py-2 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Popular</div>
             {extensions.map(ext => (
-                <div key={ext.id} className="flex gap-3 px-4 py-3 hover:bg-[#2a2d2e] cursor-pointer group border-b border-[#27272a]/50">
-                    <div className="w-10 h-10 bg-[#27272a] rounded shadow-sm flex items-center justify-center text-sm font-bold text-brand-primary flex-shrink-0">
+                <div key={ext.id} className="flex gap-3 px-4 py-3 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer group theme-border border-b border-opacity-50">
+                    <div className="w-10 h-10 theme-bg-main rounded shadow-sm flex items-center justify-center text-sm font-bold text-brand-primary flex-shrink-0">
                         {ext.icon}
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start">
-                            <h4 className="text-[13px] font-bold text-gray-200 truncate">{ext.displayName}</h4>
+                            <h4 className="text-[13px] font-bold theme-text truncate">{ext.displayName}</h4>
                         </div>
                         <p className="text-[11px] text-gray-500 truncate">{ext.description}</p>
                         <div className="flex items-center gap-3 mt-1.5">
@@ -221,7 +218,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 onClick={(e) => { e.stopPropagation(); toggleExtension(ext.id); }}
                                 className={`text-[11px] px-2 py-0.5 rounded-[2px] font-medium transition-colors ${
                                     ext.installed 
-                                    ? 'bg-[#27272a] text-gray-400 hover:text-white' 
+                                    ? 'theme-bg-main theme-text hover:bg-black/10 dark:hover:bg-white/10' 
                                     : 'bg-brand-primary text-white hover:bg-brand-primary/90'
                                 }`}
                             >
@@ -239,7 +236,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const renderSearch = () => (
       <div className="flex flex-col h-full">
         <div className="p-4 flex-shrink-0">
-            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-3">Search</span>
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-3">Search</span>
             <div className="relative">
                 <SearchIcon className="absolute left-2 top-2 w-3.5 h-3.5 text-gray-500" />
                 <input 
@@ -247,7 +244,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Search" 
-                    className="w-full pl-7 pr-2 py-1.5 bg-[#27272a] border border-transparent focus:border-brand-primary rounded-sm text-xs text-white focus:outline-none transition-all"
+                    className="w-full pl-7 pr-2 py-1.5 theme-bg-main theme-border border rounded-sm text-xs theme-text focus:outline-none focus:border-brand-primary transition-all"
                 />
             </div>
         </div>
@@ -263,7 +260,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   );
 
   return (
-    <div className="w-64 bg-[#09090b] flex flex-col h-full z-20 border-r border-[#27272a]">
+    <div className="w-64 theme-bg-sec flex flex-col h-full z-20 theme-border border-r">
       <div className="flex-1 overflow-hidden flex flex-col">
         {activeView === 'explorer' && renderExplorer()}
         {activeView === 'extensions' && renderExtensions()}

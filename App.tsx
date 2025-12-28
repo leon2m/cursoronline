@@ -9,11 +9,10 @@ import { PreviewModal } from './components/PreviewModal';
 import { StatusBar } from './components/StatusBar';
 import { MenuBar } from './components/MenuBar';
 import { AgentManagerModal } from './components/AgentManagerModal';
-import { CodeFile, EditorSettings, ViewMode, Project, User, AgentTask, AgentStatus, AgentRole, EXTENSION_TO_LANGUAGE, ProjectConfig } from './types';
-import { constructActionPrompt, createChatSession } from './services/geminiService';
+import { CodeFile, EditorSettings, ViewMode, Project, AgentTask, AgentStatus, AgentRole, EXTENSION_TO_LANGUAGE, ProjectConfig } from './types';
+import { constructActionPrompt } from './services/geminiService';
 import { CloudService } from './services/cloudService';
-import { Play, Plus, Search, ArrowLeft, Bot, PanelRightClose, PanelRightOpen, LayoutTemplate, Command } from 'lucide-react';
-import JSZip from 'jszip';
+import { Play, Plus, Bot } from 'lucide-react';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -69,8 +68,16 @@ function App() {
       const html = document.documentElement;
       // Remove all theme classes first
       ['cursor-dark', 'cursor-light', 'vercel-dark', 'dracula', 'monokai', 'nord'].forEach(t => html.classList.remove(t));
+      
       // Add active theme
       html.classList.add(settings.theme);
+
+      // Handle Global Dark Mode for Tailwind
+      if (settings.theme === 'cursor-light') {
+          html.classList.remove('dark');
+      } else {
+          html.classList.add('dark');
+      }
   }, [settings.theme]);
 
   useEffect(() => {
@@ -149,19 +156,18 @@ function App() {
           case 'run_no_debug':
               setIsPreviewOpen(true);
               break;
-          case 'undo': console.log("Undo"); break;
       }
   };
 
-  if (isLoading) return <div className="h-screen bg-[#09090b] flex items-center justify-center text-gray-500 text-xs tracking-widest uppercase">Initializing Environment...</div>;
+  if (isLoading) return <div className="h-screen theme-bg-main flex items-center justify-center theme-text text-xs tracking-widest uppercase">Initializing Environment...</div>;
 
   // --- DASHBOARD VIEW ---
   if (appState === 'dashboard') {
       return (
-          <div className="h-screen bg-[#09090b] text-white p-16 flex flex-col font-sans selection:bg-[#3794FF] selection:text-white">
+          <div className="h-screen theme-bg-main theme-text p-16 flex flex-col font-sans selection:bg-brand-primary selection:text-white">
               <header className="flex justify-between items-center mb-20">
-                  <div className="flex items-center gap-3 font-medium text-xl tracking-tight text-gray-200">
-                      <div className="w-8 h-8 bg-[#3794FF] rounded-lg flex items-center justify-center text-black">
+                  <div className="flex items-center gap-3 font-medium text-xl tracking-tight theme-text">
+                      <div className="w-8 h-8 bg-brand-primary rounded-lg flex items-center justify-center text-white">
                         <Bot className="w-5 h-5" />
                       </div>
                       Cursor
@@ -169,25 +175,25 @@ function App() {
               </header>
               <main className="max-w-4xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 gap-12">
                   <div className="space-y-6">
-                      <h2 className="text-2xl font-normal text-white">Get Started</h2>
+                      <h2 className="text-2xl font-normal theme-text">Get Started</h2>
                       <div className="grid gap-4">
-                        <button onClick={startNewProject} className="group flex items-center gap-4 p-4 bg-[#18181b] border border-[#27272a] hover:border-[#3794FF] hover:bg-[#1f1f23] rounded-lg transition-all text-left">
-                            <Plus className="w-5 h-5 text-gray-400 group-hover:text-[#3794FF]" />
+                        <button onClick={startNewProject} className="group flex items-center gap-4 p-4 theme-bg-sec theme-border border hover:border-brand-primary rounded-lg transition-all text-left">
+                            <Plus className="w-5 h-5 text-gray-500 group-hover:text-brand-primary" />
                             <div>
-                                <h3 className="text-sm font-medium text-gray-200">New Project</h3>
+                                <h3 className="text-sm font-medium theme-text">New Project</h3>
                                 <p className="text-xs text-gray-500 mt-1">Start from scratch with AI assistance</p>
                             </div>
                         </button>
                       </div>
                   </div>
                   <div className="space-y-6">
-                      <h2 className="text-2xl font-normal text-white">Recent</h2>
+                      <h2 className="text-2xl font-normal theme-text">Recent</h2>
                       <div className="space-y-1">
-                          {projects.length === 0 && <div className="text-gray-600 text-sm italic">No recent projects</div>}
+                          {projects.length === 0 && <div className="text-gray-500 text-sm italic">No recent projects</div>}
                           {projects.map(p => (
-                              <button key={p.id} onClick={() => { setCurrentProject(p); setFiles(p.files); setActiveFileId(p.files[0]?.id); setAppState('editor'); }} className="w-full text-left p-3 hover:bg-[#18181b] rounded-lg text-sm text-gray-400 hover:text-white transition-colors flex justify-between group">
-                                  <span>{p.name}</span>
-                                  <span className="text-xs text-gray-600 group-hover:text-gray-500">{new Date(p.updatedAt).toLocaleDateString()}</span>
+                              <button key={p.id} onClick={() => { setCurrentProject(p); setFiles(p.files); setActiveFileId(p.files[0]?.id); setAppState('editor'); }} className="w-full text-left p-3 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-sm text-gray-500 hover:text-brand-primary transition-colors flex justify-between group">
+                                  <span className="theme-text">{p.name}</span>
+                                  <span className="text-xs text-gray-500">{new Date(p.updatedAt).toLocaleDateString()}</span>
                               </button>
                           ))}
                       </div>
@@ -255,13 +261,13 @@ function App() {
                             className={`flex items-center gap-2 px-3 py-2 text-xs cursor-pointer border-r min-w-[120px] max-w-[200px] group theme-border ${
                                 file.id === activeFileId 
                                 ? 'theme-bg-main theme-text border-t-2 border-t-[#3794FF]' 
-                                : 'theme-bg-sec text-gray-500 hover:bg-white/5'
+                                : 'theme-bg-sec text-gray-500 hover:bg-black/5 dark:hover:bg-white/5'
                             }`}
                        >
                             <span className="truncate flex-1">{file.name}</span>
                             <button 
                                 onClick={(e) => { e.stopPropagation(); setFiles(prev => prev.filter(f => f.id !== file.id)); }} 
-                                className={`opacity-0 group-hover:opacity-100 hover:bg-white/10 rounded p-0.5 ${file.isUnsaved ? 'block opacity-100' : ''}`}
+                                className={`opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 rounded p-0.5 ${file.isUnsaved ? 'block opacity-100' : ''}`}
                             >
                                 {file.isUnsaved ? <div className="w-2 h-2 rounded-full theme-text bg-current opacity-70"></div> : <span className="text-gray-400 hover:text-red-500">×</span>}
                             </button>

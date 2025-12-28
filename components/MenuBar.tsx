@@ -95,7 +95,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({
   };
 
   return (
-    <div className="h-8 bg-[#09090b] flex items-center justify-between px-2 select-none border-b border-[#2b2b2b] text-[11px] font-sans z-[60] w-full" ref={menuRef}>
+    <div className="h-8 theme-bg-main flex items-center justify-between px-2 select-none theme-border border-b text-[11px] font-sans z-[60] w-full" ref={menuRef}>
       
       {/* Left: Menu Items */}
       <div className="flex items-center relative">
@@ -108,18 +108,18 @@ export const MenuBar: React.FC<MenuBarProps> = ({
              <button 
                 onClick={() => handleMenuClick(menu)}
                 onMouseEnter={() => activeMenu && setActiveMenu(menu)}
-                className={`px-2.5 py-1 rounded-[3px] transition-colors cursor-default ${activeMenu === menu ? 'bg-[#2a2a2a] text-white' : 'text-gray-400 hover:text-gray-100 hover:bg-[#2a2a2a]'}`}
+                className={`px-2.5 py-1 rounded-[3px] transition-colors cursor-default ${activeMenu === menu ? 'bg-black/10 dark:bg-white/10 theme-text' : 'theme-text opacity-70 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5'}`}
              >
                 {menu}
              </button>
              
              {activeMenu === menu && (
-                 <div className="absolute top-full left-0 mt-1 w-56 bg-[#1e1e1e] border border-[#2b2b2b] rounded-md shadow-xl py-1 z-[70]">
+                 <div className="absolute top-full left-0 mt-1 w-56 theme-bg-sec theme-border border rounded-md shadow-xl py-1 z-[70]">
                      {menuStructure[menu].map((item, idx) => (
                          <button
                             key={idx}
                             onClick={() => handleAction(item.action)}
-                            className="w-full text-left px-3 py-1.5 hover:bg-[#3794FF] hover:text-white text-gray-300 flex items-center justify-between group"
+                            className="w-full text-left px-3 py-1.5 hover:bg-brand-primary hover:text-white theme-text flex items-center justify-between group"
                          >
                              <div className="flex items-center gap-2">
                                  {item.icon && <item.icon className="w-3.5 h-3.5 opacity-70 group-hover:opacity-100" />}
@@ -134,7 +134,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({
         ))}
         
         <button 
-            className="px-2.5 py-1 text-gray-400 hover:text-gray-100 hover:bg-[#2a2a2a] rounded-[3px] transition-colors cursor-default"
+            className="px-2.5 py-1 theme-text opacity-70 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5 rounded-[3px] transition-colors cursor-default"
             onClick={() => {}}
         >
             Help
@@ -147,7 +147,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({
         {/* Agent Manager Button */}
         <button 
             onClick={onOpenAgentManager}
-            className="hidden md:flex text-gray-400 hover:text-white px-2 py-0.5 hover:bg-[#2a2a2a] rounded-[3px] transition-colors mr-2 border border-transparent hover:border-[#333]"
+            className="hidden md:flex theme-text opacity-70 hover:opacity-100 px-2 py-0.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-[3px] transition-colors mr-2 border border-transparent hover:theme-border"
         >
             Open Agent Manager
         </button>
@@ -156,40 +156,40 @@ export const MenuBar: React.FC<MenuBarProps> = ({
         <div className="flex items-center gap-0.5">
             <button 
                 onClick={onToggleSidebar}
-                className={`p-1 rounded-[3px] hover:bg-[#2a2a2a] ${isSidebarOpen ? 'text-gray-200' : 'text-gray-500'}`} 
+                className={`p-1 rounded-[3px] hover:bg-black/5 dark:hover:bg-white/5 ${isSidebarOpen ? 'theme-text' : 'theme-text opacity-50'}`} 
                 title="Toggle Primary Sidebar"
             >
                 {isSidebarOpen ? <SidebarOpen className="w-3.5 h-3.5" /> : <SidebarClose className="w-3.5 h-3.5" />}
             </button>
-            <button className="p-1 text-gray-500 hover:text-gray-200 hover:bg-[#2a2a2a] rounded-[3px]" title="Toggle Panel">
+            <button className="p-1 theme-text opacity-50 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5 rounded-[3px]" title="Toggle Panel">
                 <PanelBottomOpen className="w-3.5 h-3.5" />
             </button>
             <button 
                 onClick={onToggleAiPanel}
-                className={`p-1 rounded-[3px] hover:bg-[#2a2a2a] ${isAiPanelOpen ? 'text-gray-200' : 'text-gray-500'}`} 
+                className={`p-1 rounded-[3px] hover:bg-black/5 dark:hover:bg-white/5 ${isAiPanelOpen ? 'theme-text' : 'theme-text opacity-50'}`} 
                 title="Toggle Secondary Side Bar"
             >
                 {isAiPanelOpen ? <PanelRightClose className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
             </button>
         </div>
 
-        <div className="w-[1px] h-3.5 bg-[#2a2a2a] mx-1"></div>
+        <div className="w-[1px] h-3.5 theme-bg-sec mx-1"></div>
 
         {/* Utility Icons */}
-        <button className="p-1 text-gray-400 hover:text-white hover:bg-[#2a2a2a] rounded-[3px]">
+        <button className="p-1 theme-text opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5 rounded-[3px]">
             <Search className="w-3.5 h-3.5" />
         </button>
-        <button className="p-1 text-gray-400 hover:text-white hover:bg-[#2a2a2a] rounded-[3px]">
+        <button className="p-1 theme-text opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5 rounded-[3px]">
             <Globe className="w-3.5 h-3.5" />
         </button>
         <button 
             onClick={onOpenSettings}
-            className="p-1 text-gray-400 hover:text-white hover:bg-[#2a2a2a] rounded-[3px]"
+            className="p-1 theme-text opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5 rounded-[3px]"
         >
             <Settings className="w-3.5 h-3.5" />
         </button>
 
-        <div className="ml-1 pl-1 border-l border-[#2a2a2a] flex items-center gap-1 cursor-pointer hover:bg-[#2a2a2a] rounded-[3px] px-1 py-0.5">
+        <div className="ml-1 pl-1 border-l theme-border flex items-center gap-1 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 rounded-[3px] px-1 py-0.5">
              <div className="w-4 h-4 rounded-full bg-brand-primary/20 flex items-center justify-center text-brand-primary text-[9px] font-bold">
                  C
              </div>

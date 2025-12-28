@@ -23,7 +23,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
   ];
 
   return (
-    <div className="w-16 flex flex-col items-center py-6 gap-6 bg-[#050505] z-30 flex-shrink-0 border-r border-white/5">
+    <div className="w-16 flex flex-col items-center py-6 gap-6 theme-bg-main z-30 flex-shrink-0 theme-border border-r">
       <div className="flex flex-col gap-6 w-full items-center">
         {icons.map((item) => (
           <button
@@ -32,7 +32,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
             className={`relative group p-3 rounded-xl transition-all duration-300 ${
               activeView === item.id 
                 ? 'bg-brand-primary/10 text-brand-primary' 
-                : 'text-gray-500 hover:text-white hover:bg-white/5'
+                : 'text-gray-500 hover:theme-text hover:bg-black/5 dark:hover:bg-white/5'
             }`}
             title={item.label}
           >
@@ -51,12 +51,12 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
             title="AI Agent"
         >
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-primary to-brand-secondary flex items-center justify-center shadow-lg shadow-brand-primary/20">
-                <Bot className="w-6 h-6 text-black" />
+                <Bot className="w-6 h-6 text-white" />
             </div>
         </button>
         <button
             onClick={onOpenSettings}
-            className="p-3 rounded-xl transition-colors text-gray-500 hover:text-white hover:bg-white/5"
+            className="p-3 rounded-xl transition-colors text-gray-500 hover:theme-text hover:bg-black/5 dark:hover:bg-white/5"
             title="Settings"
         >
             <Settings className="w-6 h-6 stroke-[1.5]" />

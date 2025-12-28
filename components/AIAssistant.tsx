@@ -34,493 +34,361 @@ interface Attachment {
     type: 'file' | 'image';
 }
 
-const generateId = () => Math.random().toString(36).substr(2, 9);
-
-export const AIAssistant: React.FC<AIAssistantProps> = ({ 
-  isVisible, 
-  onClose, 
+export const AIAssistant: React.FC<AIAssistantProps> = ({
+  isVisible,
+  onClose,
   activeFile,
   files,
-  triggerPrompt, 
+  triggerPrompt,
   onPromptHandled,
   onUpdateFile,
   onCreateFile,
   onDeleteFile,
   onOpenPreview,
+  onAction,
   onFocusFile,
+  persistentState,
+  setPersistentState
 }) => {
-  const [mode, setMode] = useState<AssistantMode>('agent');
-  const [showModeDropdown, setShowModeDropdown] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
-  const [showSpec, setShowSpec] = useState(false);
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
-
-  // Hidden Inputs
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-
-  // Unified Chat Sessions
-  const [sessions, setSessions] = useState<ChatSession[]>([
-      { id: 'default', title: 'New Conversation', updatedAt: Date.now(), messages: [] }
-  ]);
-  const [activeSessionId, setActiveSessionId] = useState<string>('default');
-
   const [input, setInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const chatSessionRef = useRef<Chat | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [chatSession, setChatSession] = useState<Chat | null>(null);
+  const [mode, setMode] = useState<AssistantMode>('chat');
+  const [showHistory, setShowHistory] = useState(false);
+  const [showProjectSpec, setShowProjectSpec] = useState(false);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Active Spec Configuration
-  const [config, setConfig] = useState<ProjectConfig>({
-      type: 'web',
-      platform: 'browser',
-      languages: ['typescript'],
-      frameworks: ['react'],
-      tools: [],
-      isAiRecommended: true,
-      architecture: 'mvc',
-      buildTarget: 'debug'
-  });
-
-  const activeSession = sessions.find(s => s.id === activeSessionId) || sessions[0];
-  const messages = activeSession.messages;
-
+  // Initialize Chat Session
   useEffect(() => {
-    if (!chatSessionRef.current) {
-      chatSessionRef.current = createChatSession(
-        `You are Cursor AI. Be concise, technical, and helpful. Focus on code generation.`
+    const initChat = async () => {
+      const chat = await createChatSession(
+        "You are Cursor AI. You are an expert Full Stack Developer. Be concise, accurate, and helpful.",
+        persistentState.config ? JSON.stringify(persistentState.config) : undefined
       );
-    }
+      setChatSession(chat);
+      setMessages([{
+        id: 'welcome',
+        role: 'model',
+        text: 'How can I help you build today?',
+        timestamp: Date.now()
+      }]);
+    };
+    initChat();
   }, []);
 
+  // Handle Trigger Prompts
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
-
-  useEffect(() => {
-    if (triggerPrompt && isVisible && !isTyping) {
+    if (triggerPrompt && onPromptHandled) {
       handleSend(triggerPrompt);
-      if (onPromptHandled) onPromptHandled();
+      onPromptHandled();
     }
-  }, [triggerPrompt, isVisible]);
+  }, [triggerPrompt]);
 
-  const updateSessionMessages = (sessionId: string, newMessages: ChatMessage[]) => {
-      setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, messages: newMessages, updatedAt: Date.now() } : s));
-  };
-
-  const createNewSession = () => {
-      const newId = generateId();
-      setSessions(prev => [{ id: newId, title: 'New Conversation', updatedAt: Date.now(), messages: [] }, ...prev]);
-      setActiveSessionId(newId);
-      setShowHistory(false);
-  };
-
-  const deleteSession = (e: React.MouseEvent, id: string) => {
-      e.stopPropagation();
-      setSessions(prev => prev.filter(s => s.id !== id));
-      if (activeSessionId === id && sessions.length > 1) {
-          setActiveSessionId(sessions.find(s => s.id !== id)?.id || 'default');
+  // Restore State
+  useEffect(() => {
+      if (persistentState.logs.length > 0 || persistentState.status !== 'idle') {
+           // Restore logic if needed
       }
+  }, []);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // --- FILE & IMAGE HANDLING ---
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files && e.target.files[0]) {
-          const file = e.target.files[0];
-          const text = await file.text();
-          setAttachments(prev => [...prev, {
-              id: generateId(),
-              name: file.name,
-              content: text,
-              type: 'file'
-          }]);
-      }
-      if (fileInputRef.current) fileInputRef.current.value = '';
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, persistentState.logs]);
+
+  const handleSend = async (text: string = input) => {
+    if (!text.trim() && attachments.length === 0) return;
+    if (!chatSession) return;
+
+    const newUserMsg: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      text: text,
+      timestamp: Date.now()
+    };
+
+    setMessages(prev => [...prev, newUserMsg]);
+    setInput('');
+    setAttachments([]);
+    setIsLoading(true);
+
+    try {
+        // --- AGENT MODE ---
+        if (mode === 'agent' || text.toLowerCase().includes('create a') || text.toLowerCase().includes('build')) {
+            const runId = Date.now().toString();
+            
+            // 1. Plan
+            setPersistentState((prev: any) => ({ ...prev, status: 'working', activeAgent: 'planner', prompt: text }));
+            
+            const agentMsg: ChatMessage = {
+                id: runId,
+                role: 'model',
+                text: 'Initializing Autonomous Agent Team...',
+                timestamp: Date.now(),
+                type: 'agent_run',
+                runData: { ...persistentState, status: 'working' }
+            };
+            setMessages(prev => [...prev, agentMsg]);
+
+            const tasks = await generateTeamPlan(text, files, persistentState.config);
+            setPersistentState((prev: any) => ({ ...prev, tasks }));
+            
+            // Update UI with Plan
+            setMessages(prev => prev.map(m => m.id === runId ? { ...m, runData: { ...m.runData!, tasks } } : m));
+
+            // 2. Execute Tasks
+            for (const task of tasks) {
+                setPersistentState((prev: any) => ({ 
+                    ...prev, 
+                    activeAgent: task.assignedTo,
+                    tasks: prev.tasks.map((t: AgentTask) => t.id === task.id ? { ...t, status: 'in-progress' } : t)
+                }));
+                
+                // Update UI Status
+                setMessages(prev => prev.map(m => m.id === runId ? { ...m, runData: { ...m.runData!, activeAgent: task.assignedTo } } : m));
+
+                const content = await generateAgentFileContent(task, text, files, persistentState.config);
+                
+                if (task.type === 'create') onCreateFile(task.fileName, content);
+                else onUpdateFile(task.fileName, content);
+
+                setPersistentState((prev: any) => ({ 
+                    ...prev,
+                    logs: [...prev.logs, `[${task.assignedTo.toUpperCase()}] Completed ${task.fileName}`],
+                    tasks: prev.tasks.map((t: AgentTask) => t.id === task.id ? { ...t, status: 'completed' } : t)
+                }));
+            }
+
+            setPersistentState((prev: any) => ({ ...prev, status: 'completed', activeAgent: null }));
+            setMessages(prev => prev.map(m => m.id === runId ? { 
+                ...m, 
+                text: 'Task completed successfully.',
+                runData: { ...m.runData!, status: 'completed', activeAgent: null } 
+            } : m));
+
+        } else {
+            // --- CHAT MODE ---
+            // Include context of active file
+            let fullPrompt = text;
+            if (activeFile) {
+                fullPrompt += `\n\nContext - Active File (${activeFile.name}):\n${activeFile.content}`;
+            }
+
+            const result = await chatSession.sendMessage(fullPrompt);
+            const responseText = result.response.text();
+
+            setMessages(prev => [...prev, {
+                id: Date.now().toString(),
+                role: 'model',
+                text: responseText,
+                timestamp: Date.now()
+            }]);
+        }
+
+    } catch (error) {
+      console.error(error);
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: 'model',
+        text: "I encountered an error processing your request.",
+        timestamp: Date.now()
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files && e.target.files[0]) {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files?.[0]) {
           const file = e.target.files[0];
           const reader = new FileReader();
-          reader.onloadend = () => {
+          reader.onload = (ev) => {
               setAttachments(prev => [...prev, {
-                  id: generateId(),
+                  id: Date.now().toString(),
                   name: file.name,
-                  content: reader.result as string, // Base64
-                  type: 'image'
+                  content: ev.target?.result as string,
+                  type: file.type.startsWith('image') ? 'image' : 'file'
               }]);
           };
           reader.readAsDataURL(file);
       }
-      if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
-  const removeAttachment = (id: string) => {
-      setAttachments(prev => prev.filter(a => a.id !== id));
-  };
-
-  const handleSend = async (manualInput?: string) => {
-    const textToSend = manualInput || input;
-    if (!textToSend.trim() && attachments.length === 0) return;
-
-    let attachmentContext = '';
-    if (attachments.length > 0) {
-        attachmentContext = '\n\n' + attachments.map(a => 
-            a.type === 'file' 
-            ? `--- ATTACHED FILE: ${a.name} ---\n${a.content}\n--- END FILE ---`
-            : `[Image Attachment: ${a.name} - (Base64 data hidden for brevity)]`
-        ).join('\n');
-    }
-
-    const userMsg: ChatMessage = { 
-        id: generateId(), 
-        role: 'user', 
-        text: textToSend + (attachments.length > 0 ? `\n(Attached ${attachments.length} files)` : ''), 
-        timestamp: Date.now(), 
-        type: 'text' 
-    };
-    
-    const updatedMessages = [...messages, userMsg];
-    updateSessionMessages(activeSessionId, updatedMessages);
-    
-    if (!manualInput) {
-        setInput('');
-        setAttachments([]);
-    }
-
-    if (mode === 'agent' || mode === 'max') {
-        setIsTyping(true);
-        await runAgentBuild(textToSend + attachmentContext, updatedMessages);
-        setIsTyping(false);
-        return;
-    }
-
-    setIsTyping(true);
-    try {
-      let fullMessage = textToSend + attachmentContext;
-      if (activeFile && !manualInput) {
-        fullMessage = `[Active Editor File: ${activeFile.name}]\n\`\`\`${activeFile.language}\n${activeFile.content}\n\`\`\`\n\n${fullMessage}`;
-      }
-
-      const resultStream = await chatSessionRef.current!.sendMessageStream({ message: fullMessage });
-      let fullResponseText = '';
-      const modelMsgId = generateId();
-      
-      updateSessionMessages(activeSessionId, [...updatedMessages, { id: modelMsgId, role: 'model', text: '', timestamp: Date.now(), type: 'text' }]);
-
-      for await (const chunk of resultStream) {
-        const c = chunk as GenerateContentResponse;
-        if (c.text) {
-            fullResponseText += c.text;
-            setSessions(prev => prev.map(s => s.id === activeSessionId ? {
-                ...s, 
-                messages: s.messages.map(m => m.id === modelMsgId ? { ...m, text: fullResponseText } : m)
-            } : s));
-        }
-      }
-    } catch (error) {
-       console.error(error);
-       setSessions(prev => prev.map(s => s.id === activeSessionId ? {
-           ...s,
-           messages: [...s.messages, { id: generateId(), role: 'model', text: 'Error: Could not connect to AI service.', timestamp: Date.now() }]
-       } : s));
-    } finally {
-      setIsTyping(false);
-    }
-  };
-
-  const runAgentBuild = async (goal: string, currentMsgs: ChatMessage[]) => {
-      const runId = generateId();
-      const initialRunData: AgentRunData = {
-          status: 'working',
-          tasks: [],
-          logs: [`STARTED: ${goal.substring(0, 50)}...`, `CONFIG: ${config.type} / ${config.languages.join(',')}`],
-          activeAgent: 'planner'
-      };
-
-      const agentMsg: ChatMessage = { 
-          id: runId, 
-          role: 'model', 
-          text: '', 
-          timestamp: Date.now(), 
-          type: 'agent_run',
-          runData: initialRunData
-      };
-      
-      updateSessionMessages(activeSessionId, [...currentMsgs, agentMsg]);
-
-      const updateRun = (partialData: Partial<AgentRunData>) => {
-          setSessions(prev => prev.map(s => {
-              if (s.id !== activeSessionId) return s;
-              return {
-                  ...s,
-                  messages: s.messages.map(m => {
-                      if (m.id !== runId) return m;
-                      return { ...m, runData: { ...m.runData!, ...partialData } };
-                  })
-              };
-          }));
-      };
-
-      const appendLog = (msg: string) => {
-          setSessions(prev => prev.map(s => {
-              if(s.id !== activeSessionId) return s;
-              return {
-                  ...s,
-                  messages: s.messages.map(m => {
-                      if(m.id !== runId) return m;
-                      return { ...m, runData: { ...m.runData!, logs: [...m.runData!.logs, `> ${msg}`] } };
-                  })
-              };
-          }));
-      };
-
-      try {
-          appendLog('Generating Team Plan...');
-          const tasks = await generateTeamPlan(goal, files, config);
-          updateRun({ tasks });
-          appendLog(`Plan created: ${tasks.length} tasks.`);
-
-          let currentFilesState = [...files];
-
-          for (const task of tasks) {
-              updateRun({ activeAgent: task.assignedTo });
-              updateRun({ tasks: tasks.map(t => t.id === task.id ? { ...t, status: 'in-progress' } : t) });
-              appendLog(`[${task.assignedTo.toUpperCase()}] Working on ${task.fileName}...`);
-              onFocusFile(task.fileName);
-
-              const content = await generateAgentFileContent(task, goal, currentFilesState, config);
-              
-              if (task.type === 'create') {
-                  onCreateFile(task.fileName, content);
-                  currentFilesState.push({ id: generateId(), name: task.fileName, content, language: 'typescript', path: task.fileName } as CodeFile);
-              } else {
-                  onUpdateFile(task.fileName, content);
-                  currentFilesState = currentFilesState.map(f => f.name === task.fileName ? { ...f, content } : f);
-              }
-
-              tasks.find(t => t.id === task.id)!.status = 'completed'; 
-              updateRun({ tasks: [...tasks] });
-              appendLog(`Completed ${task.fileName}`);
-          }
-
-          updateRun({ status: 'completed', activeAgent: null });
-          appendLog('Build Sequence Finished.');
-          onOpenPreview();
-
-      } catch (e) {
-          updateRun({ status: 'error' });
-          appendLog(`ERROR: ${e}`);
-      }
-  };
-
-  const ModeOption = ({ id, label, icon: Icon }: any) => (
-      <button 
-        onClick={() => { setMode(id); setShowModeDropdown(false); }}
-        className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-[#2a2a2a] ${mode === id ? 'text-brand-primary bg-brand-primary/10' : 'text-gray-400'}`}
-      >
-          <Icon className="w-3.5 h-3.5" /> 
-          <span className="font-medium">{label}</span>
-      </button>
-  );
+  if (!isVisible) return null;
 
   return (
-    <div className="flex h-full bg-[#18181b] text-gray-300 relative border-l border-brand-primary/10 overflow-hidden font-sans">
+    <div className="flex flex-col h-full theme-bg-sec theme-text">
       
-      {/* HISTORY SIDEBAR */}
-      <div className={`flex flex-col border-r border-[#2b2b2b] bg-[#09090b] transition-all duration-300 ${showHistory ? 'w-64' : 'w-0 overflow-hidden'}`}>
-          <div className="p-3 border-b border-[#2b2b2b] flex items-center justify-between">
-              <span className="text-xs font-bold uppercase text-gray-500">History</span>
-              <button onClick={createNewSession} className="p-1 hover:bg-[#333] rounded text-gray-400 hover:text-white"><Plus className="w-3.5 h-3.5" /></button>
-          </div>
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-              {sessions.map(s => (
-                  <div 
-                    key={s.id} 
-                    onClick={() => { setActiveSessionId(s.id); }}
-                    className={`p-3 border-b border-[#2b2b2b] cursor-pointer hover:bg-[#1e1e1e] group ${activeSessionId === s.id ? 'bg-[#1e1e1e] border-l-2 border-l-brand-primary' : ''}`}
-                  >
-                      <div className="flex justify-between items-start">
-                          <h4 className="text-xs text-gray-300 line-clamp-1 font-medium">{s.messages[0]?.text || s.title}</h4>
-                          <button onClick={(e) => deleteSession(e, s.id)} className="hidden group-hover:block text-gray-600 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
-                      </div>
-                      <span className="text-[10px] text-gray-600">{new Date(s.updatedAt).toLocaleTimeString()}</span>
-                  </div>
-              ))}
-          </div>
+      {/* Header */}
+      <div className="h-10 flex items-center justify-between px-4 theme-border border-b bg-inherit flex-shrink-0">
+        <div className="flex items-center gap-2">
+            <button 
+                onClick={() => setMode('chat')}
+                className={`text-xs font-medium px-2 py-1 rounded transition-colors ${mode === 'chat' ? 'bg-brand-primary text-white' : 'theme-text opacity-60 hover:opacity-100 hover:bg-white/5'}`}
+            >
+                Chat
+            </button>
+            <button 
+                onClick={() => setMode('agent')}
+                className={`text-xs font-medium px-2 py-1 rounded transition-colors flex items-center gap-1 ${mode === 'agent' ? 'bg-purple-600 text-white' : 'theme-text opacity-60 hover:opacity-100 hover:bg-white/5'}`}
+            >
+                <Sparkles className="w-3 h-3" /> Agent
+            </button>
+        </div>
+        <div className="flex items-center gap-1">
+            <button 
+                onClick={() => setShowProjectSpec(!showProjectSpec)}
+                className={`p-1.5 rounded transition-colors ${showProjectSpec ? 'text-brand-primary bg-brand-primary/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                title="Project Settings"
+            >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+            </button>
+            <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-white hover:bg-white/5 rounded">
+                <X className="w-3.5 h-3.5" />
+            </button>
+        </div>
       </div>
 
-      {/* MAIN CHAT AREA */}
-      <div className="flex-1 flex flex-col min-w-0">
-          
-          {/* CURSOR-LIKE MINIMAL HEADER */}
-          <div className="h-9 border-b border-[#2b2b2b] flex items-center bg-[#18181b] select-none justify-between px-3">
-            <div className="flex items-center gap-2">
-                <button onClick={() => setShowHistory(!showHistory)} className={`p-1 rounded-md transition-colors ${showHistory ? 'text-white bg-[#333]' : 'text-gray-500 hover:bg-[#27272a]'}`}>
-                    <History className="w-4 h-4" />
-                </button>
-                <span className="text-xs font-medium text-gray-300">
-                    {activeSession.title}
-                </span>
+      <ProjectSpecPopover 
+        isOpen={showProjectSpec} 
+        onClose={() => setShowProjectSpec(false)} 
+        config={persistentState.config || { type: 'web', platform: 'browser', languages: ['typescript'], frameworks: ['react'], tools: [], isAiRecommended: true, architecture: 'modular', buildTarget: 'debug' }}
+        setConfig={(c) => setPersistentState((prev: any) => ({ ...prev, config: c }))}
+      />
+
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-inherit">
+        {messages.map((msg) => (
+          <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'user' ? 'bg-[#27272a]' : 'bg-brand-primary/10'}`}>
+              {msg.role === 'user' ? <UserIcon /> : <Bot className="w-5 h-5 text-brand-primary" />}
             </div>
-            <div className="flex items-center gap-1">
-                 <button className="p-1.5 hover:bg-[#27272a] rounded text-gray-500 hover:text-white">
-                    <MoreHorizontal className="w-4 h-4" />
-                </button>
-                <button onClick={onClose} className="p-1.5 hover:bg-[#27272a] rounded text-gray-500 hover:text-white">
-                    <X className="w-4 h-4" />
-                </button>
+            
+            <div className={`flex flex-col max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                {msg.type === 'agent_run' && msg.runData ? (
+                    <AgentBlock data={msg.runData} />
+                ) : (
+                    <div className={`rounded-lg px-4 py-2.5 text-xs leading-relaxed ${
+                        msg.role === 'user' 
+                        ? 'bg-[#27272a] theme-text' 
+                        : 'bg-transparent theme-text'
+                    }`}>
+                        <ReactMarkdown 
+                            components={{
+                                code({node, inline, className, children, ...props}: any) {
+                                    return !inline ? (
+                                        <div className="my-2 rounded overflow-hidden theme-border border bg-black/20">
+                                            <div className="bg-white/5 px-3 py-1 text-[10px] theme-text border-b theme-border opacity-70 flex justify-between">
+                                                <span>Code</span>
+                                            </div>
+                                            <code className="block p-3 text-xs font-mono whitespace-pre-wrap theme-text overflow-x-auto" {...props}>
+                                                {children}
+                                            </code>
+                                        </div>
+                                    ) : (
+                                        <code className="bg-white/10 px-1 py-0.5 rounded font-mono text-brand-primary" {...props}>
+                                            {children}
+                                        </code>
+                                    )
+                                }
+                            }}
+                        >
+                            {msg.text}
+                        </ReactMarkdown>
+                    </div>
+                )}
             </div>
           </div>
+        ))}
+        {isLoading && (
+            <div className="flex gap-3">
+                <div className="w-8 h-8 rounded-full bg-brand-primary/10 flex items-center justify-center">
+                    <Bot className="w-5 h-5 text-brand-primary" />
+                </div>
+                <div className="flex items-center gap-1 h-8">
+                    <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce"></div>
+                    <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce delay-75"></div>
+                    <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce delay-150"></div>
+                </div>
+            </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
 
-          {/* Messages Stream */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar bg-[#18181b]">
-            {messages.length === 0 && (
-                <div className="h-full flex flex-col items-center justify-center opacity-30 text-center p-8">
-                     <div className="w-16 h-16 bg-gradient-to-br from-brand-primary to-purple-600 rounded-2xl flex items-center justify-center mb-4 shadow-xl shadow-brand-primary/20">
-                         <Bot className="w-8 h-8 text-white" />
-                     </div>
-                     <p className="text-sm font-medium text-gray-200">Cursor Agent</p>
-                     <p className="text-xs max-w-xs mt-2 text-gray-500">I can plan, build, and fix your application. Configure your stack in Spec, or just start typing.</p>
-                </div>
-            )}
-            
-            {messages.map((msg) => (
-                <div key={msg.id} className={`flex flex-col gap-1 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                    {msg.type === 'agent_run' && msg.runData ? (
-                        <div className="w-full max-w-full">
-                            <AgentBlock data={msg.runData} />
-                        </div>
-                    ) : (
-                        <div className={`max-w-[95%] text-[13px] leading-relaxed rounded-md p-3 ${
-                            msg.role === 'user' 
-                            ? 'bg-[#27272a] text-gray-200 border border-[#333]' 
-                            : 'bg-transparent text-gray-300 px-0'
-                        }`}>
-                            <ReactMarkdown 
-                                components={{
-                                    code({node, className, children, ...props}) {
-                                        return <code className={`${className} bg-[#111] px-1 py-0.5 rounded text-xs`} {...props}>{children}</code>
-                                    },
-                                    pre({node, children, ...props}) {
-                                        return <div className="bg-[#111] p-2 rounded-md border border-[#333] my-2 overflow-x-auto"><pre {...props}>{children}</pre></div>
-                                    }
-                                }}
-                            >
-                                {msg.text}
-                            </ReactMarkdown>
-                        </div>
-                    )}
-                </div>
-            ))}
-            {isTyping && (
-                <div className="flex items-center gap-2 text-gray-500 text-xs px-1">
-                    <span className="w-1.5 h-1.5 bg-brand-primary rounded-full animate-pulse"></span> Thinking...
-                </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* COMPOSER INPUT AREA */}
-          <div className="p-4 bg-[#18181b] border-t border-[#2b2b2b] relative">
-            
-            {/* Active Attachments Pills */}
-            {attachments.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-2 px-1">
-                    {attachments.map(att => (
-                        <div key={att.id} className="flex items-center gap-1.5 bg-[#2a2a2d] border border-[#3f3f46] text-gray-300 px-2 py-1 rounded text-[10px] animate-in slide-in-from-bottom-1 fade-in duration-200">
-                            {att.type === 'file' ? <FileCode className="w-3 h-3 text-blue-400" /> : <FileImage className="w-3 h-3 text-purple-400" />}
-                            <span className="max-w-[100px] truncate">{att.name}</span>
-                            <button onClick={() => removeAttachment(att.id)} className="hover:text-white"><X className="w-3 h-3" /></button>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            <div className="relative bg-[#202023] border border-[#333] rounded-xl focus-within:border-brand-primary transition-all shadow-lg group flex flex-col">
-                <textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault(); 
-                            handleSend();
-                        }
-                    }}
-                    placeholder={mode === 'agent' ? "Describe the app you want to build..." : "Ask a question..."}
-                    className="w-full bg-transparent p-3 text-xs text-white focus:outline-none min-h-[40px] max-h-[200px] resize-none placeholder:text-gray-500 font-sans"
-                />
-                
-                {/* BOTTOM TOOLBAR */}
-                <div className="flex justify-between items-center px-2 pb-2 mt-1">
-                        
-                        {/* LEFT: MODE SWITCHER & ATTACHMENTS */}
-                        <div className="flex items-center gap-2 relative">
-                            {/* Mode Dropdown Trigger */}
-                            <div className="relative">
-                                <button 
-                                    onClick={() => setShowModeDropdown(!showModeDropdown)}
-                                    className="flex items-center gap-1.5 px-2 py-1.5 bg-[#2b2b2e] hover:bg-[#333] border border-[#3f3f46] rounded text-[10px] font-bold uppercase tracking-wide text-brand-primary transition-all"
-                                >
-                                    {mode === 'agent' ? <><Bot className="w-3 h-3" /> Agent Mode</> : 
-                                     mode === 'chat' ? <><Terminal className="w-3 h-3" /> Chat Mode</> : 
-                                     <><Zap className="w-3 h-3" /> Max Mode</>}
-                                    <ChevronDown className="w-3 h-3 opacity-50" />
-                                </button>
-                                
-                                {showModeDropdown && (
-                                    <div className="absolute bottom-full left-0 mb-2 w-40 bg-[#1e1e1e] border border-[#333] rounded-lg shadow-2xl z-50 flex flex-col py-1 overflow-hidden">
-                                        <ModeOption id="agent" label="Agent Mode" icon={Bot} />
-                                        <ModeOption id="chat" label="Chat Mode" icon={Terminal} />
-                                        <ModeOption id="max" label="Max Mode" icon={Zap} />
-                                    </div>
-                                )}
+      {/* Input Area */}
+      <div className="p-4 bg-inherit theme-border border-t z-10">
+        {attachments.length > 0 && (
+            <div className="flex gap-2 mb-2 overflow-x-auto">
+                {attachments.map(att => (
+                    <div key={att.id} className="relative group">
+                        {att.type === 'image' ? (
+                            <img src={att.content} alt={att.name} className="h-12 w-12 object-cover rounded border theme-border" />
+                        ) : (
+                            <div className="h-12 w-12 flex items-center justify-center bg-[#27272a] rounded border theme-border">
+                                <FileCode className="w-6 h-6 text-gray-400" />
                             </div>
-
-                            <div className="h-4 w-[1px] bg-[#3f3f46] mx-1"></div>
-
-                            {/* Spec Button */}
-                             <button 
-                                onClick={() => setShowSpec(!showSpec)}
-                                className={`p-1.5 rounded transition-colors ${showSpec ? 'bg-brand-primary/20 text-brand-primary' : 'hover:bg-[#333] text-gray-500 hover:text-gray-300'}`}
-                                title="Project Spec"
-                            >
-                                <SlidersHorizontal className="w-3.5 h-3.5" />
-                            </button>
-                            <ProjectSpecPopover 
-                                isOpen={showSpec} 
-                                onClose={() => setShowSpec(false)}
-                                config={config}
-                                setConfig={setConfig}
-                            />
-
-                            {/* Attachments */}
-                            <button onClick={() => fileInputRef.current?.click()} className="p-1.5 hover:bg-[#333] rounded text-gray-500 hover:text-gray-300 transition-colors" title="Attach File">
-                                <Paperclip className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={() => imageInputRef.current?.click()} className="p-1.5 hover:bg-[#333] rounded text-gray-500 hover:text-gray-300 transition-colors" title="Attach Image">
-                                <ImageIcon className="w-3.5 h-3.5" />
-                            </button>
-
-                            {/* Hidden Inputs */}
-                            <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
-                            <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
-                        </div>
-
-                        {/* RIGHT: SUBMIT */}
-                        <div className="flex gap-1">
-                            <button
-                                onClick={() => handleSend()}
-                                disabled={!input.trim() && attachments.length === 0 || isTyping}
-                                className="p-1.5 bg-brand-primary text-white rounded-md disabled:opacity-50 hover:bg-brand-primary/90 transition-colors shadow-lg shadow-brand-primary/20"
-                            >
-                                <ArrowUp className="w-3.5 h-3.5" />
-                            </button>
-                        </div>
-                </div>
+                        )}
+                        <button 
+                            onClick={() => setAttachments(prev => prev.filter(p => p.id !== att.id))}
+                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                            <X className="w-2.5 h-2.5" />
+                        </button>
+                    </div>
+                ))}
             </div>
-          </div>
+        )}
+        <div className="relative theme-bg-main rounded-lg theme-border border focus-within:ring-1 focus-within:ring-brand-primary transition-all">
+            <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend();
+                    }
+                }}
+                placeholder={mode === 'agent' ? "Describe the feature you want to build..." : "Ask anything (Cmd+K)"}
+                className="w-full bg-transparent text-sm theme-text p-3 max-h-32 min-h-[44px] outline-none resize-none custom-scrollbar"
+                rows={1}
+            />
+            <div className="flex items-center justify-between px-2 pb-2">
+                <div className="flex items-center gap-1">
+                    <button onClick={() => fileInputRef.current?.click()} className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors" title="Attach Code/Image">
+                        <Paperclip className="w-4 h-4" />
+                    </button>
+                    <button onClick={onOpenPreview} className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors" title="Open Preview">
+                        <Monitor className="w-4 h-4" />
+                    </button>
+                </div>
+                <button 
+                    onClick={() => handleSend()}
+                    disabled={!input.trim() && attachments.length === 0}
+                    className="bg-brand-primary text-white p-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-brand-primary/90 transition-colors"
+                >
+                    <ArrowUp className="w-4 h-4" />
+                </button>
+            </div>
+        </div>
+        <div className="text-[10px] text-gray-500 mt-2 flex justify-between px-1">
+            <span>{mode === 'agent' ? 'Agent Mode Active' : 'Chat Mode Active'}</span>
+            <span>Claude 4.5 Opus</span>
+        </div>
+        <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} multiple />
       </div>
     </div>
   );
 };
+
+const UserIcon = () => (
+    <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    </svg>
+);
