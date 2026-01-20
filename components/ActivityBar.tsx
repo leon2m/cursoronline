@@ -35,6 +35,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
                 : 'text-gray-500 hover:theme-text hover:bg-black/5 dark:hover:bg-white/5'
             }`}
             title={item.label}
+            aria-label={item.label}
           >
             <item.icon className="w-6 h-6 stroke-[1.5]" />
             {activeView === item.id && (
@@ -49,6 +50,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
             onClick={onToggleAI}
             className="p-3 text-gray-500 hover:text-brand-primary transition-all hover:scale-110 active:scale-95"
             title="AI Agent"
+            aria-label="AI Agent"
         >
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-primary to-brand-secondary flex items-center justify-center shadow-lg shadow-brand-primary/20">
                 <Bot className="w-6 h-6 text-white" />
@@ -58,6 +60,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
             onClick={onOpenSettings}
             className="p-3 rounded-xl transition-colors text-gray-500 hover:theme-text hover:bg-black/5 dark:hover:bg-white/5"
             title="Settings"
+            aria-label="Settings"
         >
             <Settings className="w-6 h-6 stroke-[1.5]" />
         </button>
