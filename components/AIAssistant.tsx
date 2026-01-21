@@ -231,12 +231,14 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
         <div className="flex items-center gap-2">
             <button 
                 onClick={() => setMode('chat')}
+                aria-pressed={mode === 'chat'}
                 className={`text-xs font-medium px-2 py-1 rounded transition-colors ${mode === 'chat' ? 'bg-brand-primary text-white' : 'theme-text opacity-60 hover:opacity-100 hover:bg-white/5'}`}
             >
                 Chat
             </button>
             <button 
                 onClick={() => setMode('agent')}
+                aria-pressed={mode === 'agent'}
                 className={`text-xs font-medium px-2 py-1 rounded transition-colors flex items-center gap-1 ${mode === 'agent' ? 'bg-purple-600 text-white' : 'theme-text opacity-60 hover:opacity-100 hover:bg-white/5'}`}
             >
                 <Sparkles className="w-3 h-3" /> Agent
@@ -247,10 +249,15 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
                 onClick={() => setShowProjectSpec(!showProjectSpec)}
                 className={`p-1.5 rounded transition-colors ${showProjectSpec ? 'text-brand-primary bg-brand-primary/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
                 title="Project Settings"
+                aria-label="Project Settings"
             >
                 <SlidersHorizontal className="w-3.5 h-3.5" />
             </button>
-            <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-white hover:bg-white/5 rounded">
+            <button
+                onClick={onClose}
+                className="p-1.5 text-gray-400 hover:text-white hover:bg-white/5 rounded"
+                aria-label="Close AI Assistant"
+            >
                 <X className="w-3.5 h-3.5" />
             </button>
         </div>
@@ -338,6 +345,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
                         <button 
                             onClick={() => setAttachments(prev => prev.filter(p => p.id !== att.id))}
                             className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                            aria-label={`Remove ${att.name}`}
                         >
                             <X className="w-2.5 h-2.5" />
                         </button>
@@ -358,13 +366,24 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
                 placeholder={mode === 'agent' ? "Describe the feature you want to build..." : "Ask anything (Cmd+K)"}
                 className="w-full bg-transparent text-sm theme-text p-3 max-h-32 min-h-[44px] outline-none resize-none custom-scrollbar"
                 rows={1}
+                aria-label="Chat input"
             />
             <div className="flex items-center justify-between px-2 pb-2">
                 <div className="flex items-center gap-1">
-                    <button onClick={() => fileInputRef.current?.click()} className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors" title="Attach Code/Image">
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+                        title="Attach Code/Image"
+                        aria-label="Attach Code or Image"
+                    >
                         <Paperclip className="w-4 h-4" />
                     </button>
-                    <button onClick={onOpenPreview} className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors" title="Open Preview">
+                    <button
+                        onClick={onOpenPreview}
+                        className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+                        title="Open Preview"
+                        aria-label="Open Preview"
+                    >
                         <Monitor className="w-4 h-4" />
                     </button>
                 </div>
@@ -372,6 +391,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
                     onClick={() => handleSend()}
                     disabled={!input.trim() && attachments.length === 0}
                     className="bg-brand-primary text-white p-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-brand-primary/90 transition-colors"
+                    aria-label="Send message"
                 >
                     <ArrowUp className="w-4 h-4" />
                 </button>
@@ -381,7 +401,14 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
             <span>{mode === 'agent' ? 'Agent Mode Active' : 'Chat Mode Active'}</span>
             <span>Claude 4.5 Opus</span>
         </div>
-        <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} multiple />
+        <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            onChange={handleFileUpload}
+            multiple
+            aria-label="File upload"
+        />
       </div>
     </div>
   );
