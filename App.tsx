@@ -12,7 +12,7 @@ import { AgentManagerModal } from './components/AgentManagerModal';
 import { CodeFile, EditorSettings, ViewMode, Project, AgentTask, AgentStatus, AgentRole, EXTENSION_TO_LANGUAGE, ProjectConfig } from './types';
 import { constructActionPrompt } from './services/geminiService';
 import { CloudService } from './services/cloudService';
-import { Play, Plus, Bot } from 'lucide-react';
+import { Play, Plus, Bot, X } from 'lucide-react';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -268,8 +268,10 @@ function App() {
                             <button 
                                 onClick={(e) => { e.stopPropagation(); setFiles(prev => prev.filter(f => f.id !== file.id)); }} 
                                 className={`opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 rounded p-0.5 ${file.isUnsaved ? 'block opacity-100' : ''}`}
+                                aria-label={`Close ${file.name}`}
+                                title="Close"
                             >
-                                {file.isUnsaved ? <div className="w-2 h-2 rounded-full theme-text bg-current opacity-70"></div> : <span className="text-gray-400 hover:text-red-500">×</span>}
+                                {file.isUnsaved ? <div className="w-2 h-2 rounded-full theme-text bg-current opacity-70"></div> : <X className="w-3 h-3 text-gray-400 hover:text-red-500" />}
                             </button>
                        </div>
                    ))}
@@ -292,6 +294,7 @@ function App() {
                         onClick={() => setIsPreviewOpen(true)}
                         className="absolute top-4 right-6 bg-green-600 hover:bg-green-500 text-white p-2 rounded-full shadow-lg z-10 transition-transform hover:scale-105"
                         title="Run Code"
+                        aria-label="Run Code"
                       >
                           <Play className="w-4 h-4 fill-current" />
                       </button>
