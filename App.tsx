@@ -266,10 +266,19 @@ function App() {
                        >
                             <span className="truncate flex-1">{file.name}</span>
                             <button 
+                                aria-label={`Close ${file.name}`}
+                                title="Close"
                                 onClick={(e) => { e.stopPropagation(); setFiles(prev => prev.filter(f => f.id !== file.id)); }} 
-                                className={`opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 rounded p-0.5 ${file.isUnsaved ? 'block opacity-100' : ''}`}
+                                className={`group/close opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 rounded p-0.5 flex items-center justify-center ${file.isUnsaved ? 'block opacity-100' : ''}`}
                             >
-                                {file.isUnsaved ? <div className="w-2 h-2 rounded-full theme-text bg-current opacity-70"></div> : <span className="text-gray-400 hover:text-red-500">×</span>}
+                                {file.isUnsaved ? (
+                                    <>
+                                        <div className="w-2 h-2 rounded-full theme-text bg-current opacity-70 group-hover/close:hidden"></div>
+                                        <span className="hidden group-hover/close:block text-gray-400 hover:text-red-500">×</span>
+                                    </>
+                                ) : (
+                                    <span className="text-gray-400 hover:text-red-500">×</span>
+                                )}
                             </button>
                        </div>
                    ))}
