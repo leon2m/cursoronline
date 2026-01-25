@@ -83,7 +83,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
         </div>
 
         <div className="flex-1 p-8 relative">
-            <button onClick={onClose} className="absolute right-4 top-4 p-1 hover:bg-white/10 text-brand-primary transition-colors">
+            <button onClick={onClose} aria-label="Close authentication modal" className="absolute right-4 top-4 p-1 hover:bg-white/10 text-brand-primary transition-colors">
                 <X className="w-5 h-5" />
             </button>
 
@@ -96,7 +96,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
             </div>
 
             {/* Terminal Output Area */}
-            <div className="mb-6 h-24 bg-black/50 border border-white/10 p-3 rounded text-[10px] text-green-500/80 font-mono overflow-y-auto custom-scrollbar">
+            <div role="log" aria-live="polite" className="mb-6 h-24 bg-black/50 border border-white/10 p-3 rounded text-[10px] text-green-500/80 font-mono overflow-y-auto custom-scrollbar">
                 {terminalLogs.map((log, i) => (
                     <div key={i} className="mb-1">{log}</div>
                 ))}
@@ -106,10 +106,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
             <form onSubmit={handleSubmit} className="space-y-5">
                 {!isLogin && (
                     <div className="group">
-                        <label className="block text-[10px] text-brand-primary/60 mb-1 uppercase tracking-widest">const displayName =</label>
+                        <label htmlFor="auth-name" className="block text-[10px] text-brand-primary/60 mb-1 uppercase tracking-widest">const displayName =</label>
                         <div className="relative">
                             <span className="absolute left-3 top-3 text-white/30 text-xs">"</span>
                             <input 
+                                id="auth-name"
                                 type="text" 
                                 placeholder="Mr. Robot"
                                 value={name}
@@ -122,10 +123,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
                 )}
 
                 <div className="group">
-                    <label className="block text-[10px] text-brand-primary/60 mb-1 uppercase tracking-widest">const email =</label>
+                    <label htmlFor="auth-email" className="block text-[10px] text-brand-primary/60 mb-1 uppercase tracking-widest">const email =</label>
                     <div className="relative">
                          <span className="absolute left-3 top-3 text-white/30 text-xs">"</span>
                         <input 
+                            id="auth-email"
                             type="email" 
                             placeholder="root@localhost" 
                             value={email}
@@ -137,10 +139,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
                 </div>
 
                 <div className="group">
-                    <label className="block text-[10px] text-brand-primary/60 mb-1 uppercase tracking-widest">const password =</label>
+                    <label htmlFor="auth-password" className="block text-[10px] text-brand-primary/60 mb-1 uppercase tracking-widest">const password =</label>
                      <div className="relative">
                         <div className="absolute left-3 top-2.5 w-4 h-4 text-brand-primary/50 flex items-center justify-center"><Hash className="w-3 h-3" /></div>
                         <input 
+                            id="auth-password"
                             type="password" 
                             placeholder="sudo_access_key"
                             value={password}
@@ -151,7 +154,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
                 </div>
 
                 {error && (
-                    <div className="text-red-500 text-xs font-mono border-l-2 border-red-500 pl-2 py-1 bg-red-500/10">
+                    <div role="alert" aria-live="assertive" className="text-red-500 text-xs font-mono border-l-2 border-red-500 pl-2 py-1 bg-red-500/10">
                         Error: {error}
                     </div>
                 )}
