@@ -12,7 +12,7 @@ import { AgentManagerModal } from './components/AgentManagerModal';
 import { CodeFile, EditorSettings, ViewMode, Project, AgentTask, AgentStatus, AgentRole, EXTENSION_TO_LANGUAGE, ProjectConfig } from './types';
 import { constructActionPrompt } from './services/geminiService';
 import { CloudService } from './services/cloudService';
-import { Play, Plus, Bot } from 'lucide-react';
+import { Play, Plus, Bot, X } from 'lucide-react';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -258,7 +258,10 @@ function App() {
                        <div 
                             key={file.id}
                             onClick={() => setActiveFileId(file.id)}
-                            className={`flex items-center gap-2 px-3 py-2 text-xs cursor-pointer border-r min-w-[120px] max-w-[200px] group theme-border ${
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveFileId(file.id); }}
+                            tabIndex={0}
+                            aria-label={`Select ${file.name}`}
+                            className={`flex items-center gap-2 px-3 py-2 text-xs cursor-pointer border-r min-w-[120px] max-w-[200px] group theme-border focus:outline-none focus-visible:bg-black/10 dark:focus-visible:bg-white/10 ${
                                 file.id === activeFileId 
                                 ? 'theme-bg-main theme-text border-t-2 border-t-[#3794FF]' 
                                 : 'theme-bg-sec text-gray-500 hover:bg-black/5 dark:hover:bg-white/5'
@@ -267,9 +270,11 @@ function App() {
                             <span className="truncate flex-1">{file.name}</span>
                             <button 
                                 onClick={(e) => { e.stopPropagation(); setFiles(prev => prev.filter(f => f.id !== file.id)); }} 
-                                className={`opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 rounded p-0.5 ${file.isUnsaved ? 'block opacity-100' : ''}`}
+                                aria-label={`Close ${file.name}`}
+                                title="Close"
+                                className={`opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 rounded p-0.5 focus:opacity-100 ${file.isUnsaved ? 'block opacity-100' : ''}`}
                             >
-                                {file.isUnsaved ? <div className="w-2 h-2 rounded-full theme-text bg-current opacity-70"></div> : <span className="text-gray-400 hover:text-red-500">×</span>}
+                                {file.isUnsaved ? <div className="w-2 h-2 rounded-full theme-text bg-current opacity-70"></div> : <X className="w-3 h-3 text-gray-400 hover:text-red-500" />}
                             </button>
                        </div>
                    ))}
