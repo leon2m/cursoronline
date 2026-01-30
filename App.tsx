@@ -258,7 +258,16 @@ function App() {
                        <div 
                             key={file.id}
                             onClick={() => setActiveFileId(file.id)}
-                            className={`flex items-center gap-2 px-3 py-2 text-xs cursor-pointer border-r min-w-[120px] max-w-[200px] group theme-border ${
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    setActiveFileId(file.id);
+                                }
+                            }}
+                            tabIndex={0}
+                            role="button"
+                            aria-current={file.id === activeFileId ? 'page' : undefined}
+                            className={`flex items-center gap-2 px-3 py-2 text-xs cursor-pointer border-r min-w-[120px] max-w-[200px] group theme-border focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#3794FF] focus-visible:outline-none focus-visible:z-10 ${
                                 file.id === activeFileId 
                                 ? 'theme-bg-main theme-text border-t-2 border-t-[#3794FF]' 
                                 : 'theme-bg-sec text-gray-500 hover:bg-black/5 dark:hover:bg-white/5'
@@ -266,6 +275,7 @@ function App() {
                        >
                             <span className="truncate flex-1">{file.name}</span>
                             <button 
+                                aria-label="Close file"
                                 onClick={(e) => { e.stopPropagation(); setFiles(prev => prev.filter(f => f.id !== file.id)); }} 
                                 className={`opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 rounded p-0.5 ${file.isUnsaved ? 'block opacity-100' : ''}`}
                             >
