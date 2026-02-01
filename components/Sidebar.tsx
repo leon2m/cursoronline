@@ -91,6 +91,8 @@ const FileTreeItem: React.FC<{
             <button 
                 onClick={(e) => onDelete(item.id, e)}
                 className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-black/10 dark:hover:bg-white/10 rounded text-gray-500 hover:text-red-400"
+                aria-label={`Delete ${name}`}
+                title={`Delete ${name}`}
             >
                 <Trash2 className="w-3 h-3" />
             </button>
@@ -140,16 +142,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="h-9 flex items-center justify-between px-4 flex-shrink-0 group">
         <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider group-hover:theme-text transition-colors">Explorer</span>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={() => onCreateFile("New File")} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="New File">
+            <button onClick={() => onCreateFile("New File")} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="New File" aria-label="New File">
                 <FilePlus className="w-3.5 h-3.5" />
             </button>
-            <button onClick={() => fileInputRef.current?.click()} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="Import File">
+            <button onClick={() => fileInputRef.current?.click()} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="Import File" aria-label="Import File">
                 <FolderPlus className="w-3.5 h-3.5" />
             </button>
-             <button onClick={onExportZip} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="Download Zip">
+             <button onClick={onExportZip} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="Download Zip" aria-label="Download Zip">
                 <Download className="w-3.5 h-3.5" />
             </button>
-            <button className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text">
+            <button className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="More Actions" aria-label="More Actions">
                 <MoreVertical className="w-3.5 h-3.5" />
             </button>
         </div>
@@ -221,6 +223,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     ? 'theme-bg-main theme-text hover:bg-black/10 dark:hover:bg-white/10' 
                                     : 'bg-brand-primary text-white hover:bg-brand-primary/90'
                                 }`}
+                                aria-label={ext.installed ? `Manage ${ext.displayName}` : `Install ${ext.displayName}`}
                             >
                                 {ext.installed ? 'Manage' : 'Install'}
                             </button>
