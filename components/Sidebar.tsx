@@ -46,14 +46,16 @@ const FileTreeItem: React.FC<{
     if (isFolder) {
         return (
             <div>
-                <div 
-                    className="flex items-center gap-1 py-1 px-2 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer theme-text opacity-70 hover:opacity-100 transition-colors select-none"
+                <button
+                    type="button"
+                    className="w-full flex items-center gap-1 py-1 px-2 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer theme-text opacity-70 hover:opacity-100 transition-colors select-none text-left focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-primary"
                     style={{ paddingLeft: `${depth * 12 + 8}px` }}
                     onClick={() => setIsOpen(!isOpen)}
+                    aria-expanded={isOpen}
                 >
                     {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                     <span className="text-[13px] font-medium truncate">{name}</span>
-                </div>
+                </button>
                 {isOpen && (
                     <div>
                         {Object.entries(item.children).map(([childName, childItem]) => (
@@ -73,24 +75,31 @@ const FileTreeItem: React.FC<{
         );
     }
 
+    const isActive = item.id === activeFileId;
+
     return (
         <div 
-            className={`flex items-center justify-between group py-1 px-2 cursor-pointer select-none transition-colors border-l-2 ${
-                item.id === activeFileId 
+            className={`flex items-center justify-between group py-0 pr-2 select-none transition-colors border-l-2 ${
+                isActive
                 ? 'bg-brand-primary/20 theme-text border-brand-primary' 
                 : 'theme-text opacity-70 hover:bg-black/5 dark:hover:bg-white/5 hover:opacity-100 border-transparent'
             }`}
-            style={{ paddingLeft: `${depth * 12 + 12}px` }}
-            onClick={() => onSelect(item.id)}
         >
-            <div className="flex items-center gap-2 overflow-hidden">
-                <FileCode className={`w-3.5 h-3.5 flex-shrink-0 ${item.id === activeFileId ? 'text-brand-primary' : 'text-gray-500'}`} />
+            <button
+                type="button"
+                className="flex-1 flex items-center gap-2 overflow-hidden py-1 cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-primary focus-visible:ring-inset text-left"
+                style={{ paddingLeft: `${depth * 12 + 12}px` }}
+                onClick={() => onSelect(item.id)}
+                aria-label={`Select ${name}`}
+            >
+                <FileCode className={`w-3.5 h-3.5 flex-shrink-0 ${isActive ? 'text-brand-primary' : 'text-gray-500'}`} />
                 <span className="text-[13px] truncate">{name}</span>
                 {item.isUnsaved && <div className="w-1.5 h-1.5 rounded-full bg-white ml-1"></div>}
-            </div>
+            </button>
             <button 
                 onClick={(e) => onDelete(item.id, e)}
-                className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-black/10 dark:hover:bg-white/10 rounded text-gray-500 hover:text-red-400"
+                className="opacity-0 group-hover:opacity-100 focus:opacity-100 p-0.5 hover:bg-black/10 dark:hover:bg-white/10 rounded text-gray-500 hover:text-red-400 focus:outline-none focus-visible:ring-1 focus-visible:ring-red-400"
+                aria-label={`Delete ${name}`}
             >
                 <Trash2 className="w-3 h-3" />
             </button>
@@ -140,16 +149,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="h-9 flex items-center justify-between px-4 flex-shrink-0 group">
         <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider group-hover:theme-text transition-colors">Explorer</span>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={() => onCreateFile("New File")} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="New File">
+            <button onClick={() => onCreateFile("New File")} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="New File" aria-label="New File">
                 <FilePlus className="w-3.5 h-3.5" />
             </button>
-            <button onClick={() => fileInputRef.current?.click()} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="Import File">
+            <button onClick={() => fileInputRef.current?.click()} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="Import File" aria-label="Import File">
                 <FolderPlus className="w-3.5 h-3.5" />
             </button>
-             <button onClick={onExportZip} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="Download Zip">
+             <button onClick={onExportZip} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="Download Zip" aria-label="Download Zip">
                 <Download className="w-3.5 h-3.5" />
             </button>
-            <button className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text">
+            <button className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" aria-label="More options">
                 <MoreVertical className="w-3.5 h-3.5" />
             </button>
         </div>
