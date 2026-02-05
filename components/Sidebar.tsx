@@ -91,6 +91,7 @@ const FileTreeItem: React.FC<{
             <button 
                 onClick={(e) => onDelete(item.id, e)}
                 className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-black/10 dark:hover:bg-white/10 rounded text-gray-500 hover:text-red-400"
+                aria-label="Delete file"
             >
                 <Trash2 className="w-3 h-3" />
             </button>
@@ -140,16 +141,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="h-9 flex items-center justify-between px-4 flex-shrink-0 group">
         <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider group-hover:theme-text transition-colors">Explorer</span>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={() => onCreateFile("New File")} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="New File">
+            <button onClick={() => onCreateFile("New File")} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="New File" aria-label="New File">
                 <FilePlus className="w-3.5 h-3.5" />
             </button>
-            <button onClick={() => fileInputRef.current?.click()} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="Import File">
+            <button onClick={() => fileInputRef.current?.click()} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="Import File" aria-label="Import File">
                 <FolderPlus className="w-3.5 h-3.5" />
             </button>
-             <button onClick={onExportZip} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="Download Zip">
+             <button onClick={onExportZip} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" title="Download Zip" aria-label="Download Zip">
                 <Download className="w-3.5 h-3.5" />
             </button>
-            <button className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text">
+            <button className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-gray-400 hover:theme-text" aria-label="More actions">
                 <MoreVertical className="w-3.5 h-3.5" />
             </button>
         </div>
@@ -189,6 +190,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <input 
                     type="text" 
                     placeholder="Search Extensions" 
+                    aria-label="Search Extensions"
                     className="w-full pl-2 pr-2 py-1.5 theme-bg-main theme-border border rounded-sm text-xs theme-text placeholder:text-gray-500 focus:outline-none focus:border-brand-primary transition-all"
                 />
             </div>
@@ -216,6 +218,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <div className="mt-2 flex items-center justify-between">
                             <button 
                                 onClick={(e) => { e.stopPropagation(); toggleExtension(ext.id); }}
+                                aria-label={`${ext.installed ? 'Manage' : 'Install'} ${ext.displayName}`}
                                 className={`text-[11px] px-2 py-0.5 rounded-[2px] font-medium transition-colors ${
                                     ext.installed 
                                     ? 'theme-bg-main theme-text hover:bg-black/10 dark:hover:bg-white/10' 
@@ -244,6 +247,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Search" 
+                    aria-label="Search"
                     className="w-full pl-7 pr-2 py-1.5 theme-bg-main theme-border border rounded-sm text-xs theme-text focus:outline-none focus:border-brand-primary transition-all"
                 />
             </div>
