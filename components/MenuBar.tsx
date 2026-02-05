@@ -158,16 +158,18 @@ export const MenuBar: React.FC<MenuBarProps> = ({
                 onClick={onToggleSidebar}
                 className={`p-1 rounded-[3px] hover:bg-black/5 dark:hover:bg-white/5 ${isSidebarOpen ? 'theme-text' : 'theme-text opacity-50'}`} 
                 title="Toggle Primary Sidebar"
+                aria-label="Toggle Primary Sidebar"
             >
                 {isSidebarOpen ? <SidebarOpen className="w-3.5 h-3.5" /> : <SidebarClose className="w-3.5 h-3.5" />}
             </button>
-            <button className="p-1 theme-text opacity-50 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5 rounded-[3px]" title="Toggle Panel">
+            <button className="p-1 theme-text opacity-50 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5 rounded-[3px]" title="Toggle Panel" aria-label="Toggle Panel">
                 <PanelBottomOpen className="w-3.5 h-3.5" />
             </button>
             <button 
                 onClick={onToggleAiPanel}
                 className={`p-1 rounded-[3px] hover:bg-black/5 dark:hover:bg-white/5 ${isAiPanelOpen ? 'theme-text' : 'theme-text opacity-50'}`} 
                 title="Toggle Secondary Side Bar"
+                aria-label="Toggle Secondary Side Bar"
             >
                 {isAiPanelOpen ? <PanelRightClose className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
             </button>
@@ -176,15 +178,16 @@ export const MenuBar: React.FC<MenuBarProps> = ({
         <div className="w-[1px] h-3.5 theme-bg-sec mx-1"></div>
 
         {/* Utility Icons */}
-        <button className="p-1 theme-text opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5 rounded-[3px]">
+        <button className="p-1 theme-text opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5 rounded-[3px]" aria-label="Search">
             <Search className="w-3.5 h-3.5" />
         </button>
-        <button className="p-1 theme-text opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5 rounded-[3px]">
+        <button className="p-1 theme-text opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5 rounded-[3px]" aria-label="Language">
             <Globe className="w-3.5 h-3.5" />
         </button>
         <button 
             onClick={onOpenSettings}
             className="p-1 theme-text opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5 rounded-[3px]"
+            aria-label="Settings"
         >
             <Settings className="w-3.5 h-3.5" />
         </button>
